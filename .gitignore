@@ -3,3 +3,4 @@ __pycache__/
 venv/
 .venv/
 liste_blanche.json
+mes_appareils.json

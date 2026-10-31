@@ -6,8 +6,8 @@ app = Flask(__name__)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 FICHIER_LISTE = os.path.join(BASE, "liste_blanche.json")
+FICHIER_MIENS = os.path.join(BASE, "mes_appareils.json")
 
-# Etat global : mode actif + reseau courant (connexion).
 etat = {"mode_actif": None, "reseau": None}
 
 MODES = {
@@ -52,30 +52,46 @@ RESEAUX_GEO = [
     {"nom": "orange-FA22",  "bssid": "5C:DC:96:FA:22:10", "lat": 48.8551, "lon": 2.3505, "signal": -80},
 ]
 
+# Appareils simules. "a moi" n'est plus code en dur : il vient de mes_appareils.json.
 APPAREILS_SIMULES = [
-    {"id": "box",    "nom": "Box / Routeur",      "ip": "192.168.1.1",  "type": "routeur",    "a_moi": True,
+    {"id": "box",    "nom": "Box / Routeur",     "ip": "192.168.1.1",  "type": "routeur",
      "trafic": ["orange.fr", "dns.google", "ntp.org"]},
-    {"id": "iph",    "nom": "iPhone de Florian",  "ip": "192.168.1.42", "type": "smartphone", "a_moi": True,
+    {"id": "iph",    "nom": "iPhone de Florian", "ip": "192.168.1.42", "type": "smartphone",
      "trafic": ["apple.com", "instagram.com", "whatsapp.net", "lemonde.fr", "google.com"]},
-    {"id": "pc",     "nom": "PC-Florian",         "ip": "192.168.1.10", "type": "ordinateur", "a_moi": True,
+    {"id": "pc",     "nom": "PC-Florian",        "ip": "192.168.1.10", "type": "ordinateur",
      "trafic": ["github.com", "cloudflare.com", "microsoft.com", "youtube.com", "digitechnologie.com"]},
-    {"id": "tv",     "nom": "TV salon",           "ip": "192.168.1.23", "type": "TV",         "a_moi": False},
-    {"id": "inc",    "nom": "Appareil inconnu",   "ip": "192.168.1.55", "type": "inconnu",    "a_moi": False},
-    {"id": "invite", "nom": "Galaxy (invité)",    "ip": "192.168.1.60", "type": "smartphone", "a_moi": False},
+    {"id": "tv",     "nom": "TV salon",          "ip": "192.168.1.23", "type": "TV",
+     "trafic": ["samsung.com", "netflix.com", "youtube.com"]},
+    {"id": "inc",    "nom": "Appareil inconnu",  "ip": "192.168.1.55", "type": "inconnu",
+     "trafic": ["akamai.net", "amazonaws.com"]},
+    {"id": "invite", "nom": "Galaxy (invité)",   "ip": "192.168.1.60", "type": "smartphone",
+     "trafic": ["snapchat.com", "tiktok.com", "google.com"]},
 ]
 
-# ---------- Liste blanche ----------
+# ---------- Fichiers JSON ----------
 
-def charger_liste():
+def _charger(fichier):
     try:
-        with open(FICHIER_LISTE, "r", encoding="utf-8") as f:
+        with open(fichier, "r", encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
+def _sauver(fichier, data):
+    with open(fichier, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def charger_liste():
+    return _charger(FICHIER_LISTE)
+
 def sauver_liste(reseaux):
-    with open(FICHIER_LISTE, "w", encoding="utf-8") as f:
-        json.dump(reseaux, f, ensure_ascii=False, indent=2)
+    _sauver(FICHIER_LISTE, reseaux)
+
+def charger_miens():
+    return _charger(FICHIER_MIENS)   # liste d'id d'appareils declares "a moi"
+
+def sauver_miens(ids):
+    _sauver(FICHIER_MIENS, ids)
 
 # ---------- Modes ----------
 
@@ -130,7 +146,7 @@ def carte():
     points = [dict(p, autorise=(p["bssid"] in deja)) for p in RESEAUX_GEO]
     return render_template("carte.html", points=points)
 
-# ---------- Connexion (reseau courant) ----------
+# ---------- Connexion ----------
 
 @app.route("/connexion")
 def connexion():
@@ -139,7 +155,7 @@ def connexion():
 @app.route("/connexion/vers/<bssid>")
 def connexion_vers(bssid):
     cible = next((r for r in charger_liste() if r["bssid"] == bssid), None)
-    if cible:                                   # on ne se connecte qu'a un reseau autorise
+    if cible:
         etat["reseau"] = cible
     return redirect(url_for("connexion"))
 
@@ -152,14 +168,31 @@ def connexion_stop():
 
 @app.route("/vigie")
 def vigie():
-    return render_template("vigie.html", appareils=APPAREILS_SIMULES, reseau=etat["reseau"])
+    miens = set(charger_miens())
+    return render_template("vigie.html", appareils=APPAREILS_SIMULES, reseau=etat["reseau"], miens=miens)
+
+@app.route("/vigie/mien/<id_app>")
+def vigie_mien(id_app):
+    ids = charger_miens()
+    if id_app not in ids and any(a["id"] == id_app for a in APPAREILS_SIMULES):
+        ids.append(id_app)
+        sauver_miens(ids)
+    return redirect(url_for("vigie"))
+
+@app.route("/vigie/pasmien/<id_app>")
+def vigie_pasmien(id_app):
+    ids = [i for i in charger_miens() if i != id_app]
+    sauver_miens(ids)
+    return redirect(url_for("vigie"))
 
 @app.route("/vigie/trafic/<id_app>")
 def vigie_trafic(id_app):
     if not etat["reseau"]:
         return redirect(url_for("vigie"))
+    if id_app not in set(charger_miens()):          # VERROU : seulement tes appareils declares
+        return redirect(url_for("vigie"))
     appareil = next((a for a in APPAREILS_SIMULES if a["id"] == id_app), None)
-    if not appareil or not appareil.get("a_moi"):
+    if not appareil:
         return redirect(url_for("vigie"))
     return render_template("vigie_trafic.html", a=appareil)
 
@@ -188,7 +221,7 @@ def liste_ajouter():
 def liste_retirer(bssid):
     reseaux = [r for r in charger_liste() if r["bssid"] != bssid]
     sauver_liste(reseaux)
-    if etat["reseau"] and etat["reseau"]["bssid"] == bssid:   # on se deconnecte si on retire le reseau courant
+    if etat["reseau"] and etat["reseau"]["bssid"] == bssid:
         etat["reseau"] = None
     return redirect(url_for("liste"))
 

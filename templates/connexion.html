@@ -66,5 +66,18 @@
       <div class="vide">Aucun réseau autorisé.<br>Ajoute d'abord un réseau dans <a href="/liste">Réseaux autorisés</a>.</div>
     {% endif %}
   </div>
+
+  <script>
+    (function(){
+      var liste = document.querySelector('.liste');
+      if(!liste) return;
+      var key = 'scroll:' + location.pathname;
+      try { var y = sessionStorage.getItem(key); if (y !== null) liste.scrollTop = parseInt(y,10); } catch(e){}
+      liste.addEventListener('click', function(e){
+        if(!e.target.closest('a')) return;
+        try { sessionStorage.setItem(key, liste.scrollTop); } catch(e){}
+      });
+    })();
+  </script>
 </body>
 </html>

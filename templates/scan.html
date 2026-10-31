@@ -72,5 +72,18 @@
     </div>
     {% endfor %}
   </div>
+
+  <script>
+    (function(){
+      var liste = document.querySelector('.liste');
+      if(!liste) return;
+      var key = 'scroll:' + location.pathname;
+      try { var y = sessionStorage.getItem(key); if (y !== null) liste.scrollTop = parseInt(y,10); } catch(e){}
+      liste.addEventListener('click', function(e){
+        if(!e.target.closest('a,button')) return;
+        try { sessionStorage.setItem(key, liste.scrollTop); } catch(e){}
+      });
+    })();
+  </script>
 </body>
 </html>
