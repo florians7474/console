@@ -5,37 +5,72 @@
   <meta name="viewport" content="width=480, initial-scale=1">
   <title>Console</title>
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    html,body { width:480px; height:320px; background:#0d1117; font-family:system-ui,sans-serif; overflow:hidden; }
-    .grille { display:flex; height:100%; gap:4px; padding:4px; }
-    .tuile { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-             background:#161b22; border:1px solid #30363d; border-radius:12px; color:#e6edf3;
-             text-decoration:none; }
-    .tuile:active { background:#21262d; }
-    .icone { font-size:46px; margin-bottom:10px; }
-    .nom { font-size:17px; font-weight:600; }
-    .etat { font-size:12px; color:#8b949e; margin-top:6px; }
-    .actif { border-color:#2ea043; }
-    .actif .etat { color:#2ea043; }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; height:320px; overflow:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:radial-gradient(130% 130% at 50% 0%, #1b2330 0%, #0d1117 60%);
+      color:#e6edf3;
+    }
+    .grille {
+      display:flex; height:100%; align-items:center; justify-content:center; gap:34px;
+    }
+    .app {
+      display:flex; flex-direction:column; align-items:center; text-decoration:none;
+      width:118px; color:#e6edf3;
+    }
+    .icone {
+      width:100px; height:100px; border-radius:26px;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 10px 20px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.28);
+      transition:transform .12s ease;
+      position:relative; overflow:hidden;
+    }
+    .icone::after {
+      content:""; position:absolute; inset:0;
+      background:linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 45%);
+      pointer-events:none;
+    }
+    .app:active .icone { transform:scale(.92); }
+    .icone img { width:76px; height:76px; object-fit:contain; z-index:1; }
+    .pwn    { background:linear-gradient(150deg,#19e38c,#0a7d4e); }
+    .cass   { background:linear-gradient(150deg,#ffb020,#e86a0a); }
+    .bjorn  { background:linear-gradient(150deg,#6f9bc8,#33506f); }
+    .nom { margin-top:12px; font-size:14px; font-weight:600; letter-spacing:.2px; color:#e6edf3; }
+    .etat { display:flex; align-items:center; gap:5px; margin-top:4px; font-size:11px; color:#8b949e; }
+    .pastille { width:7px; height:7px; border-radius:50%; background:#5a6673; }
+    .on .pastille { background:#2ea043; box-shadow:0 0 6px #2ea043; }
+    .on .etat { color:#2ea043; }
+    svg { width:54px; height:54px; z-index:1; }
   </style>
 </head>
 <body>
   <div class="grille">
-    <a class="tuile {{ 'actif' if actif=='pwnagotchi' }}" href="/pwnagotchi">
-      <div class="icone">&#128225;</div>
+
+    <a class="app {{ 'on' if actif=='pwnagotchi' }}" href="/pwnagotchi">
+      <div class="icone pwn"><img src="/static/pwnagotchi.png" alt="Pwnagotchi"></div>
       <div class="nom">Pwnagotchi</div>
-      <div class="etat">{{ 'actif' if actif=='pwnagotchi' else 'arrete' }}</div>
+      <div class="etat"><span class="pastille"></span>{{ 'actif' if actif=='pwnagotchi' else 'arrêté' }}</div>
     </a>
-    <a class="tuile {{ 'actif' if actif=='cassage' }}" href="/cassage">
-      <div class="icone">&#128273;</div>
+
+    <a class="app {{ 'on' if actif=='cassage' }}" href="/cassage">
+      <div class="icone cass">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="9" r="5.5"/>
+          <line x1="12.9" y1="12.9" x2="20" y2="20"/>
+          <line x1="17.8" y1="18.2" x2="20.4" y2="15.6"/>
+        </svg>
+      </div>
       <div class="nom">Cassage</div>
-      <div class="etat">{{ 'actif' if actif=='cassage' else 'arrete' }}</div>
+      <div class="etat"><span class="pastille"></span>{{ 'actif' if actif=='cassage' else 'arrêté' }}</div>
     </a>
-    <a class="tuile {{ 'actif' if actif=='bjorn' }}" href="/bjorn">
-      <div class="icone">&#9876;</div>
+
+    <a class="app {{ 'on' if actif=='bjorn' }}" href="/bjorn">
+      <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
       <div class="nom">Bjorn</div>
-      <div class="etat">{{ 'actif' if actif=='bjorn' else 'arrete' }}</div>
+      <div class="etat"><span class="pastille"></span>{{ 'actif' if actif=='bjorn' else 'arrêté' }}</div>
     </a>
+
   </div>
 </body>
 </html>
