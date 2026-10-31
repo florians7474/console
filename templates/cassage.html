@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>Cassage</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; height:320px; overflow:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
+    }
+    .barre {
+      height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
+      background:#161b22; border-bottom:1px solid #30363d;
+    }
+    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .titre { font-size:16px; font-weight:600; flex:1; }
+    .aide { flex:0 0 auto; font-size:11px; color:#8b949e; padding:8px 14px; background:#10151c; }
+    .liste { flex:1 1 auto; overflow-y:auto; padding:8px 12px; }
+    .ligne {
+      display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:8px;
+      background:#161b22; border:1px solid #30363d; border-radius:10px;
+    }
+    .ligne.verrou { opacity:.5; }
+    .infos { flex:1; min-width:0; }
+    .rnom { font-size:14px; font-weight:600; }
+    .rbssid { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace; }
+    .tester {
+      border:none; border-radius:8px; background:#2ea043; color:#fff; text-decoration:none;
+      font-size:13px; font-weight:600; padding:8px 14px; white-space:nowrap;
+    }
+    .cadenas { display:flex; align-items:center; gap:5px; font-size:11px; color:#8b949e; white-space:nowrap; }
+    .cadenas svg { width:15px; height:15px; }
+  </style>
+</head>
+<body>
+  <div class="barre">
+    <a class="retour" href="/">&larr;</a>
+    <div class="titre">Cassage</div>
+  </div>
+
+  <div class="aide">Captures de Pwnagotchi. Seuls tes réseaux autorisés peuvent être testés.</div>
+
+  <div class="liste">
+    {% for r in captures %}
+    <div class="ligne {{ '' if r.bssid in deja else 'verrou' }}">
+      <div class="infos">
+        <div class="rnom">{{ r.nom }}</div>
+        <div class="rbssid">{{ r.bssid }}</div>
+      </div>
+      {% if r.bssid in deja %}
+        <a class="tester" href="/cassage/tester/{{ r.bssid }}">Tester</a>
+      {% else %}
+        <span class="cadenas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="11" width="16" height="10" rx="2"/>
+            <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+          </svg>
+          non autorisé
+        </span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</body>
+</html>

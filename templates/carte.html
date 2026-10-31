@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>Carte</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html,body { width:480px; height:320px; overflow:hidden; background:#0d1117;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+    #carte { width:480px; height:320px; }
+    .retour {
+      position:absolute; top:10px; left:10px; z-index:1000;
+      background:#161b22; color:#e6edf3; text-decoration:none;
+      border:1px solid #30363d; border-radius:8px;
+      font-size:20px; line-height:1; padding:7px 11px;
+    }
+    .sim {
+      position:absolute; bottom:10px; left:10px; z-index:1000;
+      background:rgba(13,17,23,.8); color:#8b949e; font-size:10px;
+      border:1px solid #30363d; border-radius:20px; padding:4px 9px;
+    }
+  </style>
+</head>
+<body>
+  <a class="retour" href="/">&larr;</a>
+  <div id="carte"></div>
+  <div class="sim">simulation &middot; vert = autorisé</div>
+
+  <script>
+    const points = {{ points|tojson }};
+    const carte = L.map('carte', { zoomControl: false });
+    L.control.zoom({ position: 'topright' }).addTo(carte);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(carte);
+
+    const marqueurs = [];
+    points.forEach(p => {
+      const couleur = p.autorise ? '#2ea043' : '#8b949e';
+      const m = L.circleMarker([p.lat, p.lon], {
+        radius: 9, color: couleur, weight: 2, fillColor: couleur, fillOpacity: 0.75
+      }).addTo(carte);
+      m.bindPopup('<b>' + p.nom + '</b><br>' + p.bssid + '<br>' + p.signal + ' dBm'
+                  + (p.autorise ? '<br><span style="color:#2ea043">autorisé</span>' : ''));
+      marqueurs.push(m);
+    });
+
+    if (marqueurs.length) {
+      carte.fitBounds(L.featureGroup(marqueurs).getBounds().pad(0.3));
+    } else {
+      carte.setView([48.8566, 2.3522], 15);
+    }
+  </script>
+</body>
+</html>
