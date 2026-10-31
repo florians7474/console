@@ -5,7 +5,18 @@
   <meta name="viewport" content="width=480, initial-scale=1">
   <title>Fennec</title>
   <link rel="icon" type="image/svg+xml" href="/static/fennec.svg">
+  <script>
+    // Splash uniquement au demarrage de l'appli, pas a chaque retour a l'accueil.
+    try {
+      if (sessionStorage.getItem('fennec_booted')) {
+        document.documentElement.classList.add('deja');
+      } else {
+        sessionStorage.setItem('fennec_booted', '1');
+      }
+    } catch (e) {}
+  </script>
   <style>
+    html.deja .splash { display:none !important; }
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
       width:480px; height:320px; overflow:hidden; position:relative;
@@ -25,33 +36,42 @@
     @keyframes boot { 0%,55%{opacity:1;visibility:visible;} 100%{opacity:0;visibility:hidden;} }
     @keyframes pop { 0%{transform:scale(.6);opacity:0;} 100%{transform:scale(1);opacity:1;} }
 
-    .entete { height:48px; flex:0 0 auto; display:flex; align-items:center; gap:9px; padding:0 14px; }
-    .entete img { width:30px; height:30px; }
-    .entete .marque { font-size:18px; font-weight:700; letter-spacing:.5px; }
+    .entete { height:46px; flex:0 0 auto; display:flex; align-items:center; gap:9px; padding:0 12px; }
+    .entete > img { width:28px; height:28px; }
+    .entete .marque { font-size:17px; font-weight:700; letter-spacing:.5px; }
     .entete .sp { flex:1; }
+    .conn { display:flex; align-items:center; gap:6px; text-decoration:none;
+            background:#21262d; border:1px solid #30363d; border-radius:20px; padding:5px 11px;
+            font-size:11px; color:#8b949e; max-width:150px; }
+    .conn svg { width:15px; height:15px; flex:0 0 auto; }
+    .conn span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .conn.ok { color:#28c0d4; border-color:#28c0d4; }
     .reglages { padding:6px; opacity:.75; }
     .reglages:active { opacity:1; }
-    .reglages svg { width:23px; height:23px; display:block; }
+    .reglages svg { width:22px; height:22px; display:block; }
 
-    .grille { flex:1 1 auto; display:grid; grid-template-columns:repeat(2,116px); gap:12px 44px; place-content:center; }
-    .app { display:flex; flex-direction:column; align-items:center; text-decoration:none; width:116px; color:#e6edf3; }
+    .grille { flex:1 1 auto; display:flex; flex-wrap:wrap; justify-content:center; align-content:center; gap:8px 28px; padding:0 10px; }
+    .app { display:flex; flex-direction:column; align-items:center; text-decoration:none; width:104px; color:#e6edf3; }
     .icone {
-      width:80px; height:80px; border-radius:21px; display:flex; align-items:center; justify-content:center;
-      box-shadow:0 8px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.28);
+      width:72px; height:72px; border-radius:19px; display:flex; align-items:center; justify-content:center;
+      box-shadow:0 7px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.28);
       transition:transform .12s ease; position:relative; overflow:hidden;
     }
     .icone::after { content:""; position:absolute; inset:0;
       background:linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 45%); pointer-events:none; }
     .app:active .icone { transform:scale(.92); }
-    .app.on .icone { box-shadow:0 0 0 3px #2ea043, 0 8px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.28); }
-    .icone img { width:60px; height:60px; object-fit:contain; z-index:1; }
+    .app.on .icone { box-shadow:0 0 0 3px #2ea043, 0 7px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.28); }
+    .icone img { width:54px; height:54px; object-fit:contain; z-index:1; }
+    .cass img { width:70px; height:70px; }
+    .vigie img { width:70px; height:70px; }
     .pwn   { background:linear-gradient(150deg,#19e38c,#0a7d4e); }
     .cass  { background:linear-gradient(150deg,#ffb020,#e86a0a); }
     .bjorn { background:linear-gradient(150deg,#6f9bc8,#33506f); }
+    .vigie { background:linear-gradient(150deg,#28c0d4,#1577a0); }
     .carte { background:linear-gradient(150deg,#8b5cf6,#5b2fd6); }
-    .carte svg { width:42px; height:42px; z-index:1; }
-    .nom { margin-top:8px; font-size:12px; font-weight:600; color:#e6edf3; }
-    .etat { display:flex; align-items:center; gap:5px; margin-top:3px; font-size:10px; color:#8b949e; }
+    .carte svg { width:40px; height:40px; z-index:1; }
+    .nom { margin-top:7px; font-size:12px; font-weight:600; color:#e6edf3; }
+    .etat { display:flex; align-items:center; gap:5px; margin-top:2px; font-size:10px; color:#8b949e; }
     .pastille { width:6px; height:6px; border-radius:50%; background:#5a6673; }
     .on .pastille { background:#2ea043; box-shadow:0 0 6px #2ea043; }
     .on .etat { color:#2ea043; }
@@ -68,6 +88,12 @@
     <img src="/static/fennec.svg" alt="">
     <div class="marque">Fennec</div>
     <div class="sp"></div>
+    <a class="conn {{ 'ok' if reseau }}" href="/connexion">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="0.6"/>
+      </svg>
+      <span>{{ reseau.nom if reseau else 'Non connecté' }}</span>
+    </a>
     <a class="reglages" href="/liste" title="Réseaux autorisés">
       <svg viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
@@ -94,6 +120,12 @@
       <div class="icone bjorn"><img src="/static/bjorn.png" alt="Bjorn"></div>
       <div class="nom">Bjorn</div>
       <div class="etat"><span class="pastille"></span>{{ 'actif' if actif=='bjorn' else 'arrêté' }}</div>
+    </a>
+
+    <a class="app" href="/vigie">
+      <div class="icone vigie"><img src="/static/vigie.svg" alt="Vigie"></div>
+      <div class="nom">Vigie</div>
+      <div class="etat"><span class="pastille"></span>réseau</div>
     </a>
 
     <a class="app" href="/carte">

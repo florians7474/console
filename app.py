@@ -7,12 +7,12 @@ app = Flask(__name__)
 BASE = os.path.dirname(os.path.abspath(__file__))
 FICHIER_LISTE = os.path.join(BASE, "liste_blanche.json")
 
-# Un seul mode actif a la fois. None = tout est arrete.
-etat = {"mode_actif": None}
+# Etat global : mode actif + reseau courant (connexion).
+etat = {"mode_actif": None, "reseau": None}
 
 MODES = {
     "pwnagotchi": {"nom": "Pwnagotchi", "classe": "pwn",   "url": None},
-    "cassage":    {"nom": "Cassage",    "classe": "cass",  "url": None},
+    "cassage":    {"nom": "Raton",      "classe": "cass",  "url": None},
     "bjorn":      {"nom": "Bjorn",      "classe": "bjorn", "url": None},
 }
 
@@ -44,13 +44,24 @@ CAPTURES_SIMULEES = [
     {"nom": "orange-FA22", "bssid": "5C:DC:96:FA:22:10", "sim": {"trouvee": False}},
 ]
 
-# Faux reseaux geolocalises pour simuler la carte (coords de demo autour du centre de Paris).
 RESEAUX_GEO = [
     {"nom": "Livebox-2A3F", "bssid": "34:27:92:AA:2A:3F", "lat": 48.8566, "lon": 2.3522, "signal": -41},
     {"nom": "Freebox-Flo",  "bssid": "F4:CA:E5:11:88:0C", "lat": 48.8573, "lon": 2.3510, "signal": -55},
     {"nom": "SFR_1B20",     "bssid": "68:A3:78:1B:20:9D", "lat": 48.8558, "lon": 2.3541, "signal": -67},
     {"nom": "Bbox-6E1A",    "bssid": "00:1A:2B:6E:1A:44", "lat": 48.8580, "lon": 2.3533, "signal": -72},
     {"nom": "orange-FA22",  "bssid": "5C:DC:96:FA:22:10", "lat": 48.8551, "lon": 2.3505, "signal": -80},
+]
+
+APPAREILS_SIMULES = [
+    {"id": "box",    "nom": "Box / Routeur",      "ip": "192.168.1.1",  "type": "routeur",    "a_moi": True,
+     "trafic": ["orange.fr", "dns.google", "ntp.org"]},
+    {"id": "iph",    "nom": "iPhone de Florian",  "ip": "192.168.1.42", "type": "smartphone", "a_moi": True,
+     "trafic": ["apple.com", "instagram.com", "whatsapp.net", "lemonde.fr", "google.com"]},
+    {"id": "pc",     "nom": "PC-Florian",         "ip": "192.168.1.10", "type": "ordinateur", "a_moi": True,
+     "trafic": ["github.com", "cloudflare.com", "microsoft.com", "youtube.com", "digitechnologie.com"]},
+    {"id": "tv",     "nom": "TV salon",           "ip": "192.168.1.23", "type": "TV",         "a_moi": False},
+    {"id": "inc",    "nom": "Appareil inconnu",   "ip": "192.168.1.55", "type": "inconnu",    "a_moi": False},
+    {"id": "invite", "nom": "Galaxy (invité)",    "ip": "192.168.1.60", "type": "smartphone", "a_moi": False},
 ]
 
 # ---------- Liste blanche ----------
@@ -76,7 +87,7 @@ def arreter(mode):
 
 @app.route("/")
 def accueil():
-    return render_template("home.html", actif=etat["mode_actif"])
+    return render_template("home.html", actif=etat["mode_actif"], reseau=etat["reseau"])
 
 @app.route("/mode/<nom>")
 def mode(nom):
@@ -106,7 +117,7 @@ def basculer(nom):
 @app.route("/cassage/tester/<bssid>")
 def cassage_tester(bssid):
     autorises = {r["bssid"] for r in charger_liste()}
-    if bssid not in autorises:                      # VERROU : refuse si pas autorise
+    if bssid not in autorises:
         return redirect(url_for("mode", nom="cassage"))
     capture = next((c for c in CAPTURES_SIMULEES if c["bssid"] == bssid), None)
     if not capture:
@@ -118,6 +129,41 @@ def carte():
     deja = {r["bssid"] for r in charger_liste()}
     points = [dict(p, autorise=(p["bssid"] in deja)) for p in RESEAUX_GEO]
     return render_template("carte.html", points=points)
+
+# ---------- Connexion (reseau courant) ----------
+
+@app.route("/connexion")
+def connexion():
+    return render_template("connexion.html", reseaux=charger_liste(), actuel=etat["reseau"])
+
+@app.route("/connexion/vers/<bssid>")
+def connexion_vers(bssid):
+    cible = next((r for r in charger_liste() if r["bssid"] == bssid), None)
+    if cible:                                   # on ne se connecte qu'a un reseau autorise
+        etat["reseau"] = cible
+    return redirect(url_for("connexion"))
+
+@app.route("/connexion/stop")
+def connexion_stop():
+    etat["reseau"] = None
+    return redirect(url_for("connexion"))
+
+# ---------- Vigie ----------
+
+@app.route("/vigie")
+def vigie():
+    return render_template("vigie.html", appareils=APPAREILS_SIMULES, reseau=etat["reseau"])
+
+@app.route("/vigie/trafic/<id_app>")
+def vigie_trafic(id_app):
+    if not etat["reseau"]:
+        return redirect(url_for("vigie"))
+    appareil = next((a for a in APPAREILS_SIMULES if a["id"] == id_app), None)
+    if not appareil or not appareil.get("a_moi"):
+        return redirect(url_for("vigie"))
+    return render_template("vigie_trafic.html", a=appareil)
+
+# ---------- Liste blanche (routes) ----------
 
 @app.route("/liste")
 def liste():
@@ -142,11 +188,14 @@ def liste_ajouter():
 def liste_retirer(bssid):
     reseaux = [r for r in charger_liste() if r["bssid"] != bssid]
     sauver_liste(reseaux)
+    if etat["reseau"] and etat["reseau"]["bssid"] == bssid:   # on se deconnecte si on retire le reseau courant
+        etat["reseau"] = None
     return redirect(url_for("liste"))
 
 @app.route("/liste/reset")
 def liste_reset():
     sauver_liste([])
+    etat["reseau"] = None
     return redirect(url_for("liste"))
 
 @app.route("/scan")
