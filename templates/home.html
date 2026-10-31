@@ -14,7 +14,6 @@
       color:#e6edf3; display:flex; flex-direction:column;
     }
 
-    /* ----- Ecran de demarrage ----- */
     .splash {
       position:absolute; inset:0; z-index:50;
       background:radial-gradient(130% 130% at 50% 40%, #1b2330 0%, #0d1117 65%);
@@ -26,7 +25,6 @@
     @keyframes boot { 0%,55%{opacity:1;visibility:visible;} 100%{opacity:0;visibility:hidden;} }
     @keyframes pop { 0%{transform:scale(.6);opacity:0;} 100%{transform:scale(1);opacity:1;} }
 
-    /* ----- En-tete ----- */
     .entete { height:48px; flex:0 0 auto; display:flex; align-items:center; gap:9px; padding:0 14px; }
     .entete img { width:30px; height:30px; }
     .entete .marque { font-size:18px; font-weight:700; letter-spacing:.5px; }
@@ -35,7 +33,6 @@
     .reglages:active { opacity:1; }
     .reglages svg { width:23px; height:23px; display:block; }
 
-    /* ----- Grille 2x2 ----- */
     .grille { flex:1 1 auto; display:grid; grid-template-columns:repeat(2,116px); gap:12px 44px; place-content:center; }
     .app { display:flex; flex-direction:column; align-items:center; text-decoration:none; width:116px; color:#e6edf3; }
     .icone {
@@ -48,11 +45,11 @@
     .app:active .icone { transform:scale(.92); }
     .app.on .icone { box-shadow:0 0 0 3px #2ea043, 0 8px 16px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.28); }
     .icone img { width:60px; height:60px; object-fit:contain; z-index:1; }
-    .icone svg { width:42px; height:42px; z-index:1; }
     .pwn   { background:linear-gradient(150deg,#19e38c,#0a7d4e); }
     .cass  { background:linear-gradient(150deg,#ffb020,#e86a0a); }
     .bjorn { background:linear-gradient(150deg,#6f9bc8,#33506f); }
     .carte { background:linear-gradient(150deg,#8b5cf6,#5b2fd6); }
+    .carte svg { width:42px; height:42px; z-index:1; }
     .nom { margin-top:8px; font-size:12px; font-weight:600; color:#e6edf3; }
     .etat { display:flex; align-items:center; gap:5px; margin-top:3px; font-size:10px; color:#8b949e; }
     .pastille { width:6px; height:6px; border-radius:50%; background:#5a6673; }
@@ -88,14 +85,8 @@
     </a>
 
     <a class="app {{ 'on' if actif=='cassage' }}" href="/mode/cassage">
-      <div class="icone cass">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="9" cy="9" r="5.5"/>
-          <line x1="12.9" y1="12.9" x2="20" y2="20"/>
-          <line x1="17.8" y1="18.2" x2="20.4" y2="15.6"/>
-        </svg>
-      </div>
-      <div class="nom">Cassage</div>
+      <div class="icone cass"><img src="/static/raton.svg" alt="Raton"></div>
+      <div class="nom">Raton</div>
       <div class="etat"><span class="pastille"></span>{{ 'actif' if actif=='cassage' else 'arrêté' }}</div>
     </a>
 
