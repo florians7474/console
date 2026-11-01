@@ -53,6 +53,17 @@ def lancer(pcap, bssid, reseau="", wordlist=WORDLISTS["rockyou"]):
     t = threading.Thread(target=_run, args=(pcap, bssid, reseau, wordlist), daemon=True)
     t.start()
 
+def generer_dates(fichier, an_debut=1950, an_fin=2025):
+    """Stage: generate all DDMMYYYY dates (8 digits) as WPA candidates."""
+    jours_par_mois = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    with open(fichier, "w") as f:
+        for annee in range(an_debut, an_fin + 1):
+            for mois in range(1, 13):
+                for jour in range(1, jours_par_mois[mois - 1] + 1):
+                    f.write("%02d%02d%04d\n" % (jour, mois, annee))
+                    f.write("%04d%02d%02d\n" % (annee, mois, jour))
+    return fichier
+
 def cles_constructeur(essid, bssid):
     """Stage 1: ask routerkeygen-cli for factory default key candidates."""
     try:
@@ -72,6 +83,7 @@ def cles_constructeur(essid, bssid):
 ETAGES = [
     {"nom": "factory default keys", "type": "constructeur"},
     {"nom": "common passwords", "type": "wordlist", "fichier": "/usr/share/wordlists/10k-common.txt"},
+    {"nom": "dates (DDMMYYYY)", "type": "genere", "generateur": generer_dates},
     {"nom": "rockyou", "type": "wordlist", "fichier": WORDLISTS["rockyou"]},
 ]
 
@@ -89,11 +101,14 @@ def _run(pcap, bssid, reseau, wordlist):
             cles = cles_constructeur(reseau, bssid)
             if not cles:
                 with _verrou:
-                     etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})
+                    etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})
                 continue
-            wl = "/tmp/raton_stage1.txt"
+            wl = "/tmp/raton_stage_const.txt"
             with open(wl, "w") as f:
                 f.write("\n".join(cles) + "\n")
+        elif etage["type"] == "genere":
+            wl = "/tmp/raton_stage_gen.txt"
+            etage["generateur"](wl)
         else:
             wl = etage["fichier"]
 
