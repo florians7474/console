@@ -53,6 +53,30 @@ def lancer(pcap, bssid, reseau="", wordlist=WORDLISTS["rockyou"]):
     t = threading.Thread(target=_run, args=(pcap, bssid, reseau, wordlist), daemon=True)
     t.start()
 
+def generer_clavier(fichier):
+    """Stage: keyboard walks and repetition patterns (min 8 chars for WPA)."""
+    bases = [
+        "1234567890", "0987654321", "azertyuiop", "qwertyuiop",
+        "qsdfghjklm", "asdfghjkl", "wxcvbnm", "poiuytreza",
+        "1qaz2wsx", "qazwsxedc", "1q2w3e4r5t", "zaq12wsx",
+        "147258369", "123123123", "112233445566",
+    ]
+    motifs = set()
+    for b in bases:
+        if len(b) >= 8:
+            motifs.add(b)
+        # progressive slices of length >= 8
+        for n in range(8, len(b) + 1):
+            motifs.add(b[:n])
+    # single-character repetitions (8 to 12 long)
+    for c in "0123456789azertyuiopqsdfghjklmwxcvbn":
+        for n in range(8, 13):
+            motifs.add(c * n)
+    with open(fichier, "w") as f:
+        for m in sorted(motifs):
+            f.write(m + "\n")
+    return fichier
+
 def generer_dates(fichier, an_debut=1950, an_fin=2025):
     """Stage: generate all DDMMYYYY dates (8 digits) as WPA candidates."""
     jours_par_mois = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -83,7 +107,8 @@ def cles_constructeur(essid, bssid):
 ETAGES = [
     {"nom": "factory default keys", "type": "constructeur"},
     {"nom": "common passwords", "type": "wordlist", "fichier": "/usr/share/wordlists/10k-common.txt"},
-    {"nom": "dates (DDMMYYYY)", "type": "genere", "generateur": generer_dates},
+    {"nom": "keyboard patterns", "type": "genere", "generateur": generer_clavier},
+    {"nom": "dates (DDMMYYYY/YYYYMMDD)", "type": "genere", "generateur": generer_dates},
     {"nom": "rockyou", "type": "wordlist", "fichier": WORDLISTS["rockyou"]},
 ]
 
