@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>{{ infos.nom }}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; height:320px; overflow:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#0d1117; color:#e6edf3;
+    }
+    .barre {
+      height:48px; display:flex; align-items:center; gap:10px; padding:0 12px;
+      background:#161b22; border-bottom:1px solid #30363d;
+    }
+    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .titre { font-size:16px; font-weight:600; flex:1; }
+    .pastille { width:9px; height:9px; border-radius:50%; background:#5a6673; }
+    .pastille.on { background:#2ea043; box-shadow:0 0 6px #2ea043; }
+    .btn { border:none; border-radius:8px; padding:8px 16px; font-size:13px; font-weight:600;
+           color:#fff; text-decoration:none; }
+    .btn.go { background:#2ea043; }
+    .btn.stop { background:#da3633; }
+    .vue { height:272px; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; }
+    .vue iframe { width:100%; height:100%; border:0; }
+    .vue .pwna-live { width:100%; height:100%; object-fit:contain;
+                      image-rendering:pixelated; background:#000; }
+    .vide { color:#8b949e; font-size:13px; line-height:1.6; max-width:340px; }
+  </style>
+</head>
+<body>
+  <div class="barre">
+    <a class="retour" href="/">&larr;</a>
+    <div class="titre">{{ infos.nom }}</div>
+    <span class="pastille {{ 'on' if actif }}"></span>
+    {% if actif %}
+      <a class="btn stop" href="/basculer/{{ cle }}">Arrêter</a>
+    {% else %}
+      <a class="btn go" href="/basculer/{{ cle }}">Démarrer</a>
+    {% endif %}
+  </div>
+
+  <div class="vue">
+    {% if actif and url_ui %}
+      <img src="{{ url_ui }}" class="pwna-live" id="pwna-live">
+    {% elif actif %}
+      <div class="vide">Ce mode tourne.<br>Son interface s'affichera ici une fois lancé sur le Pi.</div>
+    {% else %}
+      <div class="vide">Mode à l'arrêt.<br>Appuie sur « Démarrer » pour le lancer.</div>
+    {% endif %}
+  </div>
+  <script>
+    (function () {
+      var img = document.getElementById("pwna-live");
+      if (img) {
+        setInterval(function () {
+          img.src = "/pwna-ui?t=" + Date.now();
+        }, 2000);
+      }
+    })();
+  </script>
+</body>
+</html>

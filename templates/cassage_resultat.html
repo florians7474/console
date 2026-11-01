@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
-  <title>Result</title>
+  <title>Cracking</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
@@ -17,42 +17,85 @@
     }
     .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
     .titre { font-size:16px; font-weight:600; flex:1; }
-    .corps { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; }
-    .cible { font-size:13px; color:#8b949e; margin-bottom:16px; }
+    .corps { flex:1 1 auto; display:flex; flex-direction:column; padding:14px 18px; overflow:hidden; }
+    .cible { font-size:13px; color:#8b949e; margin-bottom:12px; }
     .cible b { color:#e6edf3; }
+
+    .stage { font-size:14px; font-weight:600; margin-bottom:8px; }
+    .stage .num { color:#f0883e; }
+    .bar { height:10px; background:#161b22; border:1px solid #30363d; border-radius:6px; overflow:hidden; margin-bottom:10px; }
+    .bar i { display:block; height:100%; width:0; background:#f0883e; transition:width .4s; }
+    .stats { display:flex; justify-content:space-between; font-size:11px; color:#8b949e; margin-bottom:12px; }
+    .try { font-size:12px; color:#c9d1d9; font-family:ui-monospace,Consolas,monospace;
+           background:#161b22; border:1px solid #30363d; border-radius:6px; padding:8px 10px;
+           white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .try span { color:#f0883e; }
+
+    .fin { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
     .verdict { font-size:20px; font-weight:700; margin-bottom:10px; }
     .faible { color:#da3633; }
     .solide { color:#2ea043; }
     .detail { font-size:13px; color:#c9d1d9; line-height:1.6; max-width:360px; }
     .detail .cle { font-family:ui-monospace,Consolas,monospace; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:2px 8px; }
-    .sim { font-size:10px; color:#8b949e; margin-top:16px; }
+    .hide { display:none; }
   </style>
 </head>
 <body>
   <div class="barre">
     <a class="retour" href="/mode/cassage">&larr;</a>
-    <div class="titre">Test result</div>
+    <div class="titre">Cracking</div>
   </div>
 
   <div class="corps">
     <div class="cible">Network tested: <b>{{ c.nom }}</b> &middot; {{ c.bssid }}</div>
 
-    {% if c.sim.trouvee %}
-      <div class="verdict faible">WEAK key</div>
-      <div class="detail">
-        Found at step "{{ c.sim.etape }}" in {{ c.sim.temps }}:<br>
-        <span class="cle">{{ c.sim.cle }}</span><br><br>
-        This key falls too fast. Change it to something long and random.
-      </div>
-    {% else %}
-      <div class="verdict solide">Strong key</div>
-      <div class="detail">
-        No key found after the dictionary and rules.<br>
-        Nothing to report, this router holds up well.
-      </div>
-    {% endif %}
+    <div id="live">
+      <div class="stage">Stage <span class="num"><b id="snum">1</b>/<b id="stot">1</b></span> — <span id="sname">starting…</span></div>
+      <div class="bar"><i id="bar"></i></div>
+      <div class="stats"><span id="tested">0 keys</span><span id="speed">0 k/s</span></div>
+      <div class="try">testing: <span id="cand">…</span></div>
+    </div>
 
-    <div class="sim">simulated result</div>
+    <div id="fin" class="fin hide">
+      <div class="verdict" id="verdict"></div>
+      <div class="detail" id="detail"></div>
+    </div>
   </div>
+
+  <script>
+    function fmt(n){ return n.toLocaleString('en-US'); }
+    var timer = setInterval(tick, 1000);
+    tick();
+    function tick(){
+      fetch('/cassage/etat').then(r=>r.json()).then(e=>{
+        document.getElementById('snum').textContent = e.etape_num || 1;
+        document.getElementById('stot').textContent = e.etape_total || 1;
+        document.getElementById('sname').textContent = e.etape || 'starting…';
+        document.getElementById('tested').textContent = fmt(e.testes||0) + ' keys';
+        document.getElementById('speed').textContent = (e.vitesse||0) + ' k/s';
+        document.getElementById('cand').textContent = e.candidat || '…';
+        var pct = e.total ? Math.min(100, (e.testes/e.total)*100) : 0;
+        document.getElementById('bar').style.width = pct + '%';
+
+        if(e.fini){
+          clearInterval(timer);
+          document.getElementById('live').classList.add('hide');
+          var fin = document.getElementById('fin');
+          var v = document.getElementById('verdict');
+          var d = document.getElementById('detail');
+          fin.classList.remove('hide');
+          if(e.trouve){
+            v.textContent = 'WEAK key';
+            v.className = 'verdict faible';
+            d.innerHTML = 'Key found:<br><span class="cle">' + e.cle + '</span><br><br>This key falls to a dictionary. Change it to something long and random.';
+          } else {
+            v.textContent = 'Strong key';
+            v.className = 'verdict solide';
+            d.innerHTML = 'No key found after the local stages.<br>This router holds up well.';
+          }
+        }
+      }).catch(()=>{});
+    }
+  </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 import os
 import json
-from flask import Flask, render_template, redirect, url_for, abort, request
+import raton_engine
+from flask import Flask, render_template, redirect, url_for, abort, request, jsonify
 
 app = Flask(__name__)
 
@@ -236,10 +237,16 @@ def cassage_tester(bssid):
     autorises = {r["bssid"] for r in charger_liste()}
     if bssid not in autorises:
         return redirect(url_for("mode", nom="cassage"))
-    capture = next((c for c in CAPTURES_SIMULEES if c["bssid"] == bssid), None)
+    capture = next((c for c in lire_handshakes() if c["bssid"] == bssid), None)
     if not capture:
         return redirect(url_for("mode", nom="cassage"))
+    pcap = os.path.join(HANDSHAKES_DIR, capture["fichier"])
+    raton_engine.lancer(pcap, bssid, capture["nom"])
     return render_template("cassage_resultat.html", c=capture)
+
+@app.route("/cassage/etat")
+def cassage_etat():
+    return jsonify(raton_engine.etat_cassage)
 
 @app.route("/carte")
 def carte():
