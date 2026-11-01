@@ -109,6 +109,7 @@ ETAGES = [
     {"nom": "common passwords", "type": "wordlist", "fichier": "/usr/share/wordlists/10k-common.txt"},
     {"nom": "keyboard patterns", "type": "genere", "generateur": generer_clavier},
     {"nom": "dates (DDMMYYYY/YYYYMMDD)", "type": "genere", "generateur": generer_dates},
+    {"nom": "common + mutation rules", "type": "regles", "fichier": "/usr/share/wordlists/10k-common.txt"},
     {"nom": "rockyou", "type": "wordlist", "fichier": WORDLISTS["rockyou"]},
 ]
 
@@ -134,6 +135,10 @@ def _run(pcap, bssid, reseau, wordlist):
         elif etage["type"] == "genere":
             wl = "/tmp/raton_stage_gen.txt"
             etage["generateur"](wl)
+        elif etage["type"] == "regles":
+            wl = "PIPE_JOHN"
+            dico_regles = etage["fichier"]
+            
         else:
             wl = etage["fichier"]
 
@@ -143,6 +148,7 @@ def _run(pcap, bssid, reseau, wordlist):
             etat_cassage["testes"] = 0
             etat_cassage["total"] = 0
             etat_cassage["candidat"] = ""
+            etat_cassage["flux"] = (etage["type"] == "regles")
 
         try:
             if os.path.exists(keyfile):
@@ -150,10 +156,20 @@ def _run(pcap, bssid, reseau, wordlist):
         except OSError:
             pass
 
-        cmd = ["aircrack-ng", "-w", wl, "-l", keyfile, "-b", bssid, pcap]
+        _john = None
+        if wl == "PIPE_JOHN":
+            _john = subprocess.Popen(
+                ["john", "--stdout", "--rules", "--wordlist=" + dico_regles],
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            )
+            cmd = ["aircrack-ng", "-w", "-", "-l", keyfile, "-b", bssid, pcap]
+            aircrack_stdin = _john.stdout
+        else:
+            cmd = ["aircrack-ng", "-w", wl, "-l", keyfile, "-b", bssid, pcap]
+            aircrack_stdin = None
         try:
             _proc = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                cmd, stdin=aircrack_stdin, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 universal_newlines=True, bufsize=1,
             )
         except FileNotFoundError:
@@ -170,6 +186,11 @@ def _run(pcap, bssid, reseau, wordlist):
                 _parser(buf)
                 buf = ""
         _proc.wait()
+        if _john is not None:
+            try:
+                _john.terminate()
+            except Exception:
+                pass
 
         cle = None
         try:
