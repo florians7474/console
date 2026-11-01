@@ -244,6 +244,44 @@ def cassage_tester(bssid):
     raton_engine.lancer(pcap, bssid, capture["nom"])
     return render_template("cassage_resultat.html", c=capture)
 
+@app.route("/cassage/export/<bssid>")
+def cassage_export(bssid):
+    autorises = {r["bssid"] for r in charger_liste()}
+    if bssid not in autorises:
+        return jsonify({"ok": False, "erreur": "Network not in allowed list"})
+    capture = next((c for c in lire_handshakes() if c["bssid"] == bssid), None)
+    if not capture:
+        return jsonify({"ok": False, "erreur": "No handshake for this network"})
+    pcap = os.path.join(HANDSHAKES_DIR, capture["fichier"])
+    sortie = "/tmp/raton_export_" + bssid.replace(":", "") + ".hc22000"
+    try:
+        subprocess.run(
+            ["hcxpcapngtool", "-o", sortie, pcap],
+            capture_output=True, text=True, timeout=30,
+        )
+    except Exception as ex:
+        return jsonify({"ok": False, "erreur": "Conversion failed: " + str(ex)})
+    try:
+        with open(sortie) as f:
+            hash_hc = f.read().strip()
+    except OSError:
+        hash_hc = ""
+    if not hash_hc:
+        return jsonify({"ok": False, "erreur": "No crackable handshake in this capture"})
+    commande = "hashcat -m 22000 " + os.path.basename(sortie) + " wordlist.txt"
+    return jsonify({
+        "ok": True,
+        "fichier": os.path.basename(sortie),
+        "hash": hash_hc,
+        "commande": commande,
+    })
+
+@app.route("/cassage/gpu/<bssid>")
+def cassage_gpu(bssid):
+    capture = next((c for c in lire_handshakes() if c["bssid"] == bssid), None)
+    nom = capture["nom"] if capture else bssid
+    return render_template("cassage_gpu.html", bssid=bssid, nom=nom)
+
 @app.route("/cassage/etat")
 def cassage_etat():
     e = raton_engine.etat_cassage

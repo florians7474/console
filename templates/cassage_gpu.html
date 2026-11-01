@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=480, initial-scale=1">
+  <title>Export for GPU</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    html,body {
+      width:480px; height:320px; overflow:hidden;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+      background:#0d1117; color:#e6edf3; display:flex; flex-direction:column;
+    }
+    .barre {
+      height:48px; flex:0 0 auto; display:flex; align-items:center; gap:10px; padding:0 12px;
+      background:#161b22; border-bottom:1px solid #30363d;
+    }
+    .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .titre { font-size:16px; font-weight:600; flex:1; }
+    .corps { flex:1 1 auto; display:flex; flex-direction:column; padding:14px 18px; overflow-y:auto; }
+    .cible { font-size:13px; color:#8b949e; margin-bottom:12px; }
+    .cible b { color:#e6edf3; }
+    .label { font-size:11px; color:#8b949e; text-transform:uppercase; letter-spacing:.5px; margin:10px 0 5px; }
+    .box {
+      font-size:11px; color:#c9d1d9; font-family:ui-monospace,Consolas,monospace;
+      background:#161b22; border:1px solid #30363d; border-radius:6px; padding:8px 10px;
+      word-break:break-all; white-space:pre-wrap; max-height:120px; overflow-y:auto;
+    }
+    .cmd { color:#f0883e; }
+    .wait { font-size:13px; color:#8b949e; text-align:center; margin-top:40px; }
+    .err { font-size:13px; color:#da3633; text-align:center; margin-top:40px; }
+    .hide { display:none; }
+  </style>
+</head>
+<body>
+  <div class="barre">
+    <a class="retour" href="/mode/cassage">&larr;</a>
+    <div class="titre">Export for GPU</div>
+  </div>
+
+  <div class="corps">
+    <div class="cible">Network: <b>{{ nom }}</b> &middot; {{ bssid }}</div>
+
+    <div id="wait" class="wait">Converting handshake…</div>
+    <div id="err" class="err hide"></div>
+
+    <div id="result" class="hide">
+      <div class="label">Hash file (.hc22000)</div>
+      <div class="box" id="hash"></div>
+      <div class="label">Run on a GPU machine</div>
+      <div class="box cmd" id="cmd"></div>
+    </div>
+  </div>
+
+  <script>
+    fetch('/cassage/export/{{ bssid }}').then(r=>r.json()).then(e=>{
+      document.getElementById('wait').classList.add('hide');
+      if(e.ok){
+        document.getElementById('result').classList.remove('hide');
+        document.getElementById('hash').textContent = e.hash;
+        document.getElementById('cmd').textContent = e.commande;
+      } else {
+        var err = document.getElementById('err');
+        err.classList.remove('hide');
+        err.textContent = e.erreur || 'Export failed';
+      }
+    }).catch(function(){
+      document.getElementById('wait').classList.add('hide');
+      var err = document.getElementById('err');
+      err.classList.remove('hide');
+      err.textContent = 'Export failed';
+    });
+  </script>
+</body>
+</html>

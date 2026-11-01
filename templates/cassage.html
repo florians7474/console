@@ -32,6 +32,10 @@
       border:none; border-radius:8px; background:#2ea043; color:#fff; text-decoration:none;
       font-size:13px; font-weight:600; padding:8px 14px; white-space:nowrap;
     }
+    .exporter {
+      border:1px solid #f0883e; border-radius:8px; background:none; color:#f0883e;
+      text-decoration:none; font-size:13px; font-weight:600; padding:7px 12px; white-space:nowrap;
+    }
     .cadenas { display:flex; align-items:center; gap:5px; font-size:11px; color:#8b949e; white-space:nowrap; }
     .cadenas svg { width:15px; height:15px; }
   </style>
@@ -54,6 +58,7 @@
       </div>
       {% if r.bssid in deja %}
         <a class="tester" href="/cassage/tester/{{ r.bssid }}">Test</a>
+        <a class="exporter" href="/cassage/gpu/{{ r.bssid }}">GPU</a>
       {% else %}
         <span class="cadenas">
           <svg viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
