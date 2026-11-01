@@ -27,6 +27,7 @@ etat_cassage = {
     "fini": False,
     "message": "",
     "journal": [],
+    "enregistree": False,
 }
 
 _verrou = threading.Lock()
@@ -44,6 +45,7 @@ def _reset(bssid, reseau):
         "testes": 0, "total": 0, "vitesse": 0.0, "candidat": "",
         "trouve": False, "cle": None, "fini": False, "message": "",
         "journal": [],
+        "enregistree": False,
     })
 
 

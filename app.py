@@ -246,7 +246,16 @@ def cassage_tester(bssid):
 
 @app.route("/cassage/etat")
 def cassage_etat():
-    return jsonify(raton_engine.etat_cassage)
+    e = raton_engine.etat_cassage
+    if e.get("trouve") and e.get("cle") and not e.get("enregistree"):
+        reseaux = charger_liste()
+        for r in reseaux:
+            if r["bssid"] == e.get("bssid"):
+                r["cle"] = e["cle"]
+                break
+        sauver_liste(reseaux)
+        e["enregistree"] = True
+    return jsonify(e)
 
 @app.route("/cassage/stop")
 def cassage_stop():
