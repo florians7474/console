@@ -24,10 +24,13 @@
     .btn.go { background:#2ea043; }
     .btn.stop { background:#da3633; }
     .vue { height:272px; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; }
-    .vue iframe { width:100%; height:100%; border:0; }
+    .vue.plein { padding:0; }
     .vue .pwna-live { width:100%; height:100%; object-fit:contain;
                       image-rendering:pixelated; background:#000; }
     .vide { color:#8b949e; font-size:13px; line-height:1.6; max-width:340px; }
+    .cadre { position:relative; width:480px; height:272px; overflow:hidden; background:#000; }
+    .cadre iframe { position:absolute; top:0; left:0; width:820px; height:465px; border:0;
+                    transform:scale(0.5854); transform-origin:top left; }
   </style>
 </head>
 <body>
@@ -42,8 +45,10 @@
     {% endif %}
   </div>
 
-  <div class="vue">
-    {% if actif and url_ui %}
+  <div class="vue {{ 'plein' if actif and url_iframe }}">
+    {% if actif and url_iframe %}
+      <div class="cadre"><iframe src="{{ url_iframe }}"></iframe></div>
+    {% elif actif and url_ui %}
       <img src="{{ url_ui }}" class="pwna-live" id="pwna-live">
     {% elif actif %}
       <div class="vide">Ce mode tourne.<br>Son interface s'affichera ici une fois lancé sur le Pi.</div>

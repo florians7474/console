@@ -102,6 +102,7 @@ import base64
 # Services systemd gérés par chaque mode, dans l'ordre de démarrage
 SERVICES = {
     "pwnagotchi": ["bettercap", "pwngrid-peer", "pwnagotchi"],
+    "bjorn": ["bjorn", "bjorn-console"],
 }
 
 import glob
@@ -179,9 +180,18 @@ def mode(nom):
         actif = est_actif("pwnagotchi")
         etat["mode_actif"] = "pwnagotchi" if actif else etat["mode_actif"]
         url_ui = "/pwna-ui"
-        return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif, url_ui=url_ui)
+        return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
+                               url_ui=url_ui, url_iframe=None)
+    if nom == "bjorn":
+        actif = est_actif("bjorn")
+        etat["mode_actif"] = "bjorn" if actif else etat["mode_actif"]
+        hote = request.host.split(":")[0]
+        url_iframe = f"http://{hote}:8000/"
+        return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
+                               url_ui=None, url_iframe=url_iframe)
     actif = (etat["mode_actif"] == nom)
-    return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif, url_ui=None)
+    return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
+                           url_ui=None, url_iframe=None)
 
 @app.route("/basculer/<nom>")
 def basculer(nom):
