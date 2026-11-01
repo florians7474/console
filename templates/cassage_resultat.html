@@ -121,18 +121,25 @@
           var v = document.getElementById('verdict');
           var d = document.getElementById('detail');
           fin.classList.remove('hide');
+          var rob = e.robustesse || {};
           if(e.trouve){
-            v.textContent = 'WEAK key';
+            v.textContent = rob.label || 'Weak key';
             v.className = 'verdict faible';
-            d.innerHTML = 'Key found:<br><span class="cle">' + e.cle + '</span><br><br>This key falls to a dictionary. Change it to something long and random.<br><br><span style="color:#2ea043;">&#10003; Key saved to Allowed networks.</span>';
+            d.innerHTML =
+              (rob.detail || 'This key falls to a dictionary.') +
+              '<br><br>Key found:<br><span class="cle">' + e.cle + '</span>' +
+              '<br><br>Change it to something long and random.' +
+              '<br><br><span style="color:#2ea043;">&#10003; Key saved to Allowed networks.</span>';
           } else {
-            v.textContent = 'Strong key';
+            v.textContent = rob.label || 'Robust';
             v.className = 'verdict solide';
-            d.innerHTML = 'No key found after the local stages.<br>This router holds up well.';
+            d.innerHTML =
+              (rob.detail || 'No key found after the local stages.') +
+              '<br>This router holds up well.';
           }
         }
       }).catch(()=>{});
     }
-  </script>
+  </script>  
 </body>
 </html>

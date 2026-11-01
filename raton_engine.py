@@ -28,6 +28,7 @@ etat_cassage = {
     "message": "",
     "journal": [],
     "enregistree": False,
+    "robustesse": None,
 }
 
 _verrou = threading.Lock()
@@ -208,6 +209,7 @@ def _run(pcap, bssid, reseau, wordlist):
                 etat_cassage["trouve"] = True
                 etat_cassage["cle"] = cle
                 etat_cassage["etape_echec"] = i
+                etat_cassage["robustesse"] = _score_robustesse(i, etat_cassage["etape_total"])
                 etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "cracked"})
                 etat_cassage["message"] = "Cracked"
             return
@@ -218,7 +220,30 @@ def _run(pcap, bssid, reseau, wordlist):
     with _verrou:
         etat_cassage["actif"] = False
         etat_cassage["fini"] = True
-        etat_cassage["message"] = "Exhausted"
+        etat_cassage["robustesse"] = _score_robustesse(None, etat_cassage["etape_total"])
+        etat_cassage["message"] = "Exhausted"        
+
+def _score_robustesse(etage_echec, total):
+    """Robustness = the stage that cracked the key. Earlier stage = weaker key."""
+    if etage_echec is None:
+        return {
+            "label": "Robust",
+            "niveau": "ok",
+            "detail": "Key resisted every offline cracking stage.",
+        }
+    libelles = {
+        1: ("Critical", "Factory-default or vendor-pattern key, recovered instantly."),
+        2: ("Very weak", "Key found in a common-password list."),
+        3: ("Weak", "Key found in the rockyou wordlist."),
+    }
+    label, detail = libelles.get(etage_echec, ("Weak", "Key recovered by an early stage."))
+    return {
+        "label": label,
+        "niveau": "risque",
+        "detail": detail,
+        "etage": etage_echec,
+        "total": total,
+    }
 
 def _parser(ligne):
     m = RE_TESTES.search(ligne)
