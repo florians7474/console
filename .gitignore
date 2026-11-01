@@ -1,6 +1,4 @@
-__pycache__/
+*.bak
 *.pyc
-venv/
-.venv/
+__pycache__/
 liste_blanche.json
-mes_appareils.json
