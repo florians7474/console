@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
@@ -39,9 +39,9 @@
     <div class="titre">{{ infos.nom }}</div>
     <span class="pastille {{ 'on' if actif }}"></span>
     {% if actif %}
-      <a class="btn stop" href="/basculer/{{ cle }}">Arrêter</a>
+      <a class="btn stop" href="/basculer/{{ cle }}">Stop</a>
     {% else %}
-      <a class="btn go" href="/basculer/{{ cle }}">Démarrer</a>
+      <a class="btn go" href="/basculer/{{ cle }}">Start</a>
     {% endif %}
   </div>
 
@@ -51,9 +51,9 @@
     {% elif actif and url_ui %}
       <img src="{{ url_ui }}" class="pwna-live" id="pwna-live">
     {% elif actif %}
-      <div class="vide">Ce mode tourne.<br>Son interface s'affichera ici une fois lancé sur le Pi.</div>
+      <div class="vide">This mode is running.<br>Its interface will appear here once started on the Pi.</div>
     {% else %}
-      <div class="vide">Mode à l'arrêt.<br>Appuie sur « Démarrer » pour le lancer.</div>
+      <div class="vide">Mode stopped.<br>Press "Start" to launch it.</div>
     {% endif %}
   </div>
   <script>

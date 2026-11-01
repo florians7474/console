@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
-  <title>Scanner</title>
+  <title>Scan</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
@@ -42,12 +42,12 @@
 <body>
   <div class="barre">
     <a class="retour" href="/liste">&larr;</a>
-    <div class="titre">Réseaux détectés</div>
+    <div class="titre">Detected networks</div>
   </div>
 
   <div class="onglets">
-    <a href="/scan?source=direct" class="{{ 'actif' if source=='direct' }}">Scan direct</a>
-    <a href="/scan?source=pwna" class="{{ 'actif' if source=='pwna' }}">Repérés par Pwnagotchi</a>
+    <a href="/scan?source=direct" class="{{ 'actif' if source=='direct' }}">Direct scan</a>
+    <a href="/scan?source=pwna" class="{{ 'actif' if source=='pwna' }}">Spotted by Pwnagotchi</a>
   </div>
 
   <div class="liste">
@@ -59,14 +59,14 @@
       </div>
       <span class="sig">{{ r.signal }} dBm</span>
       {% if r.bssid in deja %}
-        <span class="deja" title="Déjà autorisé">&check;</span>
+        <span class="deja" title="Already allowed">&check;</span>
       {% else %}
         <form method="post" action="/liste/ajouter">
           <input type="hidden" name="nom" value="{{ r.nom }}">
           <input type="hidden" name="bssid" value="{{ r.bssid }}">
           <input type="hidden" name="retour" value="scan">
           <input type="hidden" name="source" value="{{ source }}">
-          <button class="plus" type="submit" title="Ajouter à la liste blanche">+</button>
+          <button class="plus" type="submit" title="Add to whitelist">+</button>
         </form>
       {% endif %}
     </div>

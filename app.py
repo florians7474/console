@@ -31,15 +31,15 @@ RESEAUX_PWNA = [
     {"nom": "orange-FA22",    "bssid": "5C:DC:96:FA:22:10", "signal": -66},
     {"nom": "DIRECT-ab-HP",   "bssid": "9A:2B:0E:AB:33:5C", "signal": -70},
     {"nom": "Netgear_Invite", "bssid": "A0:40:A0:77:19:2D", "signal": -77},
-    {"nom": "(masqué)",       "bssid": "C8:D1:2A:55:71:EE", "signal": -82},
+    {"nom": "(hidden)",       "bssid": "C8:D1:2A:55:71:EE", "signal": -82},
 ]
 
 CAPTURES_SIMULEES = [
     {"nom": "Livebox-2A3F", "bssid": "34:27:92:AA:2A:3F",
-     "sim": {"trouvee": True, "cle": "soleil2019", "etape": "dictionnaire + règles", "temps": "23 s"}},
+     "sim": {"trouvee": True, "cle": "soleil2019", "etape": "dictionary + rules", "temps": "23 s"}},
     {"nom": "Freebox-Flo", "bssid": "F4:CA:E5:11:88:0C", "sim": {"trouvee": False}},
     {"nom": "SFR_1B20", "bssid": "68:A3:78:1B:20:9D",
-     "sim": {"trouvee": True, "cle": "julien1985", "etape": "dictionnaire", "temps": "6 s"}},
+     "sim": {"trouvee": True, "cle": "julien1985", "etape": "dictionary", "temps": "6 s"}},
     {"nom": "Bbox-6E1A", "bssid": "00:1A:2B:6E:1A:44", "sim": {"trouvee": False}},
     {"nom": "orange-FA22", "bssid": "5C:DC:96:FA:22:10", "sim": {"trouvee": False}},
 ]
@@ -52,23 +52,23 @@ RESEAUX_GEO = [
     {"nom": "orange-FA22",  "bssid": "5C:DC:96:FA:22:10", "lat": 48.8551, "lon": 2.3505, "signal": -80},
 ]
 
-# Appareils simules. "a moi" n'est plus code en dur : il vient de mes_appareils.json.
+# Simulated devices. "mine" is no longer hardcoded: it comes from mes_appareils.json.
 APPAREILS_SIMULES = [
-    {"id": "box",    "nom": "Box / Routeur",     "ip": "192.168.1.1",  "type": "routeur",
+    {"id": "box",    "nom": "Router / Gateway",  "ip": "192.168.1.1",  "type": "router",
      "trafic": ["orange.fr", "dns.google", "ntp.org"]},
-    {"id": "iph",    "nom": "iPhone de Florian", "ip": "192.168.1.42", "type": "smartphone",
+    {"id": "iph",    "nom": "Florian's iPhone",  "ip": "192.168.1.42", "type": "smartphone",
      "trafic": ["apple.com", "instagram.com", "whatsapp.net", "lemonde.fr", "google.com"]},
-    {"id": "pc",     "nom": "PC-Florian",        "ip": "192.168.1.10", "type": "ordinateur",
+    {"id": "pc",     "nom": "Florian's PC",      "ip": "192.168.1.10", "type": "computer",
      "trafic": ["github.com", "cloudflare.com", "microsoft.com", "youtube.com", "digitechnologie.com"]},
-    {"id": "tv",     "nom": "TV salon",          "ip": "192.168.1.23", "type": "TV",
+    {"id": "tv",     "nom": "Living room TV",    "ip": "192.168.1.23", "type": "TV",
      "trafic": ["samsung.com", "netflix.com", "youtube.com"]},
-    {"id": "inc",    "nom": "Appareil inconnu",  "ip": "192.168.1.55", "type": "inconnu",
+    {"id": "inc",    "nom": "Unknown device",    "ip": "192.168.1.55", "type": "unknown",
      "trafic": ["akamai.net", "amazonaws.com"]},
-    {"id": "invite", "nom": "Galaxy (invité)",   "ip": "192.168.1.60", "type": "smartphone",
+    {"id": "invite", "nom": "Galaxy (guest)",    "ip": "192.168.1.60", "type": "smartphone",
      "trafic": ["snapchat.com", "tiktok.com", "google.com"]},
 ]
 
-# ---------- Fichiers JSON ----------
+# ---------- JSON files ----------
 
 def _charger(fichier):
     try:
@@ -88,7 +88,7 @@ def sauver_liste(reseaux):
     _sauver(FICHIER_LISTE, reseaux)
 
 def charger_miens():
-    return _charger(FICHIER_MIENS)   # liste d'id d'appareils declares "a moi"
+    return _charger(FICHIER_MIENS)   # list of device ids declared "mine"
 
 def sauver_miens(ids):
     _sauver(FICHIER_MIENS, ids)
@@ -99,7 +99,7 @@ import subprocess
 import urllib.request
 import base64
 
-# Services systemd gérés par chaque mode, dans l'ordre de démarrage
+# systemd services managed by each mode, in start order
 SERVICES = {
     "pwnagotchi": ["bettercap", "pwngrid-peer", "pwnagotchi"],
     "bjorn": ["bjorn", "bjorn-console"],
@@ -108,7 +108,7 @@ SERVICES = {
 import glob
 
 def detecter_cle_monitor():
-    """Retourne le nom de la 1re interface wlan capable de mode monitor, sinon None."""
+    """Return the name of the first wlan interface capable of monitor mode, else None."""
     for chemin in sorted(glob.glob("/sys/class/net/wlan*")):
         iface = os.path.basename(chemin)
         try:
@@ -118,7 +118,7 @@ def detecter_cle_monitor():
                 ["iw", "phy", phy, "info"],
                 capture_output=True, text=True, timeout=10,
             ).stdout
-            # On cible la section des modes supportés
+            # We target the supported-modes section
             if "* monitor" in infos:
                 return iface
         except Exception:
@@ -224,7 +224,7 @@ def carte():
     points = [dict(p, autorise=(p["bssid"] in deja)) for p in RESEAUX_GEO]
     return render_template("carte.html", points=points)
 
-# ---------- Connexion ----------
+# ---------- Connection ----------
 
 @app.route("/connexion")
 def connexion():
@@ -267,14 +267,14 @@ def vigie_pasmien(id_app):
 def vigie_trafic(id_app):
     if not etat["reseau"]:
         return redirect(url_for("vigie"))
-    if id_app not in set(charger_miens()):          # VERROU : seulement tes appareils declares
+    if id_app not in set(charger_miens()):          # LOCK: only your declared devices
         return redirect(url_for("vigie"))
     appareil = next((a for a in APPAREILS_SIMULES if a["id"] == id_app), None)
     if not appareil:
         return redirect(url_for("vigie"))
     return render_template("vigie_trafic.html", a=appareil)
 
-# ---------- Liste blanche (routes) ----------
+# ---------- Whitelist (routes) ----------
 
 @app.route("/liste")
 def liste():
@@ -289,7 +289,7 @@ def liste_ajouter():
     if bssid:
         reseaux = charger_liste()
         if not any(r["bssid"] == bssid for r in reseaux):
-            reseaux.append({"nom": nom or "Sans nom", "bssid": bssid})
+            reseaux.append({"nom": nom or "Unnamed", "bssid": bssid})
             sauver_liste(reseaux)
     if retour == "scan":
         return redirect(url_for("scan", source=source))

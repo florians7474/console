@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
-  <title>Trafic</title>
+  <title>Traffic</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
@@ -34,7 +34,7 @@
     <div class="titre">{{ a.nom }}</div>
   </div>
 
-  <div class="aide">Domaines contactés récemment</div>
+  <div class="aide">Recently contacted domains</div>
 
   <div class="liste">
     {% for d in a.trafic %}
@@ -42,6 +42,6 @@
     {% endfor %}
   </div>
 
-  <div class="note">Seuls les domaines sont visibles. Le HTTPS chiffre le contenu des pages.</div>
+  <div class="note">Only domains are visible. HTTPS encrypts page content.</div>
 </body>
 </html>

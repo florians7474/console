@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
-  <title>Réseaux autorisés</title>
+  <title>Allowed networks</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
@@ -52,8 +52,8 @@
 <body>
   <div class="barre">
     <a class="retour" href="/">&larr;</a>
-    <div class="titre">Réseaux autorisés</div>
-    <a class="scan-btn" href="/scan">Scanner</a>
+    <div class="titre">Allowed networks</div>
+    <a class="scan-btn" href="/scan">Scan</a>
   </div>
 
   <div class="liste">
@@ -64,22 +64,22 @@
           <div class="rnom">{{ r.nom }}</div>
           <div class="rbssid">{{ r.bssid }}</div>
         </div>
-        <a class="retirer" href="/liste/retirer/{{ r.bssid }}" title="Retirer">&times;</a>
+        <a class="retirer" href="/liste/retirer/{{ r.bssid }}" title="Remove">&times;</a>
       </div>
       {% endfor %}
     {% else %}
-      <div class="vide">Aucun réseau autorisé pour l'instant.<br>Scanne, ou ajoute ta box ci-dessous.</div>
+      <div class="vide">No allowed network yet.<br>Scan, or add your router below.</div>
     {% endif %}
   </div>
 
   <form class="ajout" method="post" action="/liste/ajouter">
-    <input type="text" name="nom" placeholder="Nom (ex: Maison)">
+    <input type="text" name="nom" placeholder="Name (e.g. Home)">
     <input type="text" name="bssid" placeholder="AA:BB:CC:DD:EE:FF" required>
-    <button type="submit">Ajouter</button>
+    <button type="submit">Add</button>
   </form>
 
   <div class="pied">
-    <a href="/liste/reset" onclick="return confirm('Tout effacer ?')">Tout effacer</a>
+    <a href="/liste/reset" onclick="return confirm('Clear everything?')">Clear all</a>
   </div>
 
   <script>

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
@@ -48,8 +48,8 @@
   </div>
 
   {% if reseau %}
-    <div class="reseaubar">Réseau : <b>{{ reseau.nom }}</b></div>
-    <div class="aide">Marque tes appareils avec « C'est à moi » pour pouvoir voir leur trafic.</div>
+    <div class="reseaubar">Network: <b>{{ reseau.nom }}</b></div>
+    <div class="aide">Mark your devices as "Mine" to see their traffic.</div>
     <div class="liste">
       {% for a in appareils %}
       {% set mien = a.id in miens %}
@@ -59,18 +59,18 @@
           <div class="rsub">{{ a.ip }} · {{ a.type }}</div>
         </div>
         {% if mien %}
-          <a class="trafic" href="/vigie/trafic/{{ a.id }}">Trafic</a>
-          <a class="untag" href="/vigie/pasmien/{{ a.id }}" title="Ce n'est pas à moi">&times;</a>
+          <a class="trafic" href="/vigie/trafic/{{ a.id }}">Traffic</a>
+          <a class="untag" href="/vigie/pasmien/{{ a.id }}" title="Not mine">&times;</a>
         {% else %}
-          <a class="claim" href="/vigie/mien/{{ a.id }}">C'est à moi</a>
+          <a class="claim" href="/vigie/mien/{{ a.id }}">Mine</a>
         {% endif %}
       </div>
       {% endfor %}
     </div>
   {% else %}
     <div class="vide">
-      <p>Tu n'es connecté à aucun réseau.<br>Vigie regarde les appareils du réseau sur lequel tu es connecté.</p>
-      <a href="/connexion">Se connecter à un réseau</a>
+      <p>You're not connected to any network.<br>Vigie watches the devices on the network you're connected to.</p>
+      <a href="/connexion">Connect to a network</a>
     </div>
   {% endif %}
 

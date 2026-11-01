@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
-  <title>Résultat</title>
+  <title>Result</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
@@ -31,28 +31,28 @@
 <body>
   <div class="barre">
     <a class="retour" href="/mode/cassage">&larr;</a>
-    <div class="titre">Résultat du test</div>
+    <div class="titre">Test result</div>
   </div>
 
   <div class="corps">
-    <div class="cible">Réseau testé : <b>{{ c.nom }}</b> &middot; {{ c.bssid }}</div>
+    <div class="cible">Network tested: <b>{{ c.nom }}</b> &middot; {{ c.bssid }}</div>
 
     {% if c.sim.trouvee %}
-      <div class="verdict faible">Clé FAIBLE</div>
+      <div class="verdict faible">WEAK key</div>
       <div class="detail">
-        Trouvée à l'étape « {{ c.sim.etape }} » en {{ c.sim.temps }} :<br>
+        Found at step "{{ c.sim.etape }}" in {{ c.sim.temps }}:<br>
         <span class="cle">{{ c.sim.cle }}</span><br><br>
-        Cette clé tombe trop vite. À changer pour quelque chose de long et aléatoire.
+        This key falls too fast. Change it to something long and random.
       </div>
     {% else %}
-      <div class="verdict solide">Clé solide</div>
+      <div class="verdict solide">Strong key</div>
       <div class="detail">
-        Aucune clé trouvée après le dictionnaire et les règles.<br>
-        Rien à signaler, cette box résiste bien.
+        No key found after the dictionary and rules.<br>
+        Nothing to report, this router holds up well.
       </div>
     {% endif %}
 
-    <div class="sim">résultat simulé</div>
+    <div class="sim">simulated result</div>
   </div>
 </body>
 </html>

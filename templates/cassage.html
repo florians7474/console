@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
@@ -43,7 +43,7 @@
     <div class="titre">Raton</div>
   </div>
 
-  <div class="aide">Captures de Pwnagotchi. Seuls tes réseaux autorisés peuvent être testés.</div>
+  <div class="aide">Pwnagotchi captures. Only your allowed networks can be tested.</div>
 
   <div class="liste">
     {% for r in captures %}
@@ -53,14 +53,14 @@
         <div class="rbssid">{{ r.bssid }}</div>
       </div>
       {% if r.bssid in deja %}
-        <a class="tester" href="/cassage/tester/{{ r.bssid }}">Tester</a>
+        <a class="tester" href="/cassage/tester/{{ r.bssid }}">Test</a>
       {% else %}
         <span class="cadenas">
           <svg viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="4" y="11" width="16" height="10" rx="2"/>
             <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
           </svg>
-          non autorisé
+          not allowed
         </span>
       {% endif %}
     </div>

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
-  <title>Connexion</title>
+  <title>Connection</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body {
@@ -39,11 +39,11 @@
 <body>
   <div class="barre">
     <a class="retour" href="/">&larr;</a>
-    <div class="titre">Connexion réseau</div>
+    <div class="titre">Network connection</div>
   </div>
 
   <div class="etatconn">
-    {% if actuel %}Connecté à <b>{{ actuel.nom }}</b>{% else %}Non connecté{% endif %}
+    {% if actuel %}Connected to <b>{{ actuel.nom }}</b>{% else %}Not connected{% endif %}
   </div>
 
   <div class="liste">
@@ -55,15 +55,15 @@
           <div class="rbssid">{{ r.bssid }}</div>
         </div>
         {% if actuel and actuel.bssid == r.bssid %}
-          <span class="badge">Connecté</span>
-          <a class="btn stop" href="/connexion/stop">Déconnecter</a>
+          <span class="badge">Connected</span>
+          <a class="btn stop" href="/connexion/stop">Disconnect</a>
         {% else %}
-          <a class="btn go" href="/connexion/vers/{{ r.bssid }}">Se connecter</a>
+          <a class="btn go" href="/connexion/vers/{{ r.bssid }}">Connect</a>
         {% endif %}
       </div>
       {% endfor %}
     {% else %}
-      <div class="vide">Aucun réseau autorisé.<br>Ajoute d'abord un réseau dans <a href="/liste">Réseaux autorisés</a>.</div>
+      <div class="vide">No allowed network.<br>First add one in <a href="/liste">Allowed networks</a>.</div>
     {% endif %}
   </div>
 
