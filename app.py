@@ -169,13 +169,36 @@ def pwna_ui():
 def accueil():
     return render_template("home.html", actif=etat["mode_actif"], reseau=etat["reseau"])
 
+HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
+
+def lire_handshakes():
+    captures = {}
+    try:
+        fichiers = os.listdir(HANDSHAKES_DIR)
+    except OSError:
+        return []
+    for f in fichiers:
+        if not f.endswith(".pcap"):
+            continue
+        base = f[:-5]
+        if "_" not in base:
+            continue
+        nom, _, brut = base.rpartition("_")
+        brut = brut.lower()
+        if len(brut) != 12 or not all(c in "0123456789abcdef" for c in brut):
+            continue
+        bssid = ":".join(brut[i:i+2] for i in range(0, 12, 2)).upper()
+        if bssid not in captures:
+            captures[bssid] = {"nom": nom, "bssid": bssid, "fichier": f}
+    return sorted(captures.values(), key=lambda c: c["nom"].lower())
+
 @app.route("/mode/<nom>")
 def mode(nom):
     if nom not in MODES:
         abort(404)
     if nom == "cassage":
         deja = {r["bssid"] for r in charger_liste()}
-        return render_template("cassage.html", captures=CAPTURES_SIMULEES, deja=deja)
+        return render_template("cassage.html", captures=lire_handshakes(), deja=deja)
     if nom == "pwnagotchi":
         actif = est_actif("pwnagotchi")
         etat["mode_actif"] = "pwnagotchi" if actif else etat["mode_actif"]
