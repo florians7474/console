@@ -284,15 +284,36 @@ def liste():
 def liste_ajouter():
     nom = request.form.get("nom", "").strip()
     bssid = request.form.get("bssid", "").strip().upper()
+    cle = request.form.get("cle", "").strip()
     retour = request.form.get("retour", "")
     source = request.form.get("source", "direct")
     if bssid:
         reseaux = charger_liste()
         if not any(r["bssid"] == bssid for r in reseaux):
-            reseaux.append({"nom": nom or "Unnamed", "bssid": bssid})
+            entree = {"nom": nom or "Unnamed", "bssid": bssid}
+            if cle:
+                entree["cle"] = cle
+            reseaux.append(entree)
             sauver_liste(reseaux)
     if retour == "scan":
         return redirect(url_for("scan", source=source))
+    return redirect(url_for("liste"))
+
+@app.route("/liste/editer", methods=["POST"])
+def liste_editer():
+    bssid = request.form.get("bssid", "").strip().upper()
+    nom = request.form.get("nom", "").strip()
+    cle = request.form.get("cle", "").strip()
+    reseaux = charger_liste()
+    for r in reseaux:
+        if r["bssid"] == bssid:
+            r["nom"] = nom or r.get("nom", "Unnamed")
+            if cle:
+                r["cle"] = cle
+            else:
+                r.pop("cle", None)
+            break
+    sauver_liste(reseaux)
     return redirect(url_for("liste"))
 
 @app.route("/liste/retirer/<bssid>")
