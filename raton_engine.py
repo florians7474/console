@@ -71,9 +71,9 @@ def cles_constructeur(essid, bssid):
 
 ETAGES = [
     {"nom": "factory default keys", "type": "constructeur"},
+    {"nom": "common passwords", "type": "wordlist", "fichier": "/usr/share/wordlists/10k-common.txt"},
     {"nom": "rockyou", "type": "wordlist", "fichier": WORDLISTS["rockyou"]},
 ]
-
 
 def _run(pcap, bssid, reseau, wordlist):
     global _proc
