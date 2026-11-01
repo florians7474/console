@@ -21,6 +21,14 @@
     .cible { font-size:13px; color:#8b949e; margin-bottom:12px; }
     .cible b { color:#e6edf3; }
 
+    .journal { margin-bottom:10px; }
+    .jline { font-size:12px; padding:3px 0; display:flex; gap:8px; align-items:center; }
+    .jline .ico { width:16px; text-align:center; font-weight:700; }
+    .jline.ok .ico { color:#2ea043; }
+    .jline.no .ico { color:#8b949e; }
+    .jline.skip .ico { color:#6e7681; }
+    .jline .txt { color:#8b949e; }
+
     .stage { font-size:14px; font-weight:600; margin-bottom:8px; }
     .stage .num { color:#f0883e; }
     .bar { height:10px; background:#161b22; border:1px solid #30363d; border-radius:6px; overflow:hidden; margin-bottom:10px; }
@@ -53,6 +61,7 @@
     <div class="cible">Network tested: <b>{{ c.nom }}</b> &middot; {{ c.bssid }}</div>
 
     <div id="live">
+      <div class="journal" id="journal"></div>
       <div class="stage">Stage <span class="num"><b id="snum">1</b>/<b id="stot">1</b></span> — <span id="sname">starting…</span></div>
       <div class="bar"><i id="bar"></i></div>
       <div class="stats"><span id="tested">0 keys</span><span id="speed">0 k/s</span></div>
@@ -84,6 +93,16 @@
         document.getElementById('cand').textContent = e.candidat || '…';
         var pct = e.total ? Math.min(100, (e.testes/e.total)*100) : 0;
         document.getElementById('bar').style.width = pct + '%';
+
+        var jl = e.journal || [];
+        var jhtml = '';
+        jl.forEach(function(s){
+          var cls = s.resultat==='cracked' ? 'ok' : (s.resultat==='skipped' ? 'skip' : 'no');
+          var ico = s.resultat==='cracked' ? '✓' : (s.resultat==='skipped' ? '⊘' : '✗');
+          var lab = s.resultat==='cracked' ? 'cracked' : (s.resultat==='skipped' ? 'not applicable' : 'not found');
+          jhtml += '<div class="jline '+cls+'"><span class="ico">'+ico+'</span><span class="txt">Stage '+s.num+': '+s.nom+' — '+lab+'</span></div>';
+        });
+        document.getElementById('journal').innerHTML = jhtml;
 
         if(e.fini){
           clearInterval(timer);

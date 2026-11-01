@@ -26,6 +26,7 @@ etat_cassage = {
     "cle": None,
     "fini": False,
     "message": "",
+    "journal": [],
 }
 
 _verrou = threading.Lock()
@@ -42,6 +43,7 @@ def _reset(bssid, reseau):
         "etape": None, "etape_num": 0, "etape_total": 1,
         "testes": 0, "total": 0, "vitesse": 0.0, "candidat": "",
         "trouve": False, "cle": None, "fini": False, "message": "",
+        "journal": [],
     })
 
 
@@ -51,57 +53,109 @@ def lancer(pcap, bssid, reseau="", wordlist=WORDLISTS["rockyou"]):
     t = threading.Thread(target=_run, args=(pcap, bssid, reseau, wordlist), daemon=True)
     t.start()
 
+def cles_constructeur(essid, bssid):
+    """Stage 1: ask routerkeygen-cli for factory default key candidates."""
+    try:
+        out = subprocess.run(
+            ["routerkeygen-cli", "-q", "-s", essid, "-m", bssid],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return []
+    cles = []
+    for ligne in out.stdout.splitlines():
+        c = ligne.strip()
+        if 8 <= len(c) <= 63 and " " not in c:
+            cles.append(c)
+    return cles
+
+ETAGES = [
+    {"nom": "factory default keys", "type": "constructeur"},
+    {"nom": "rockyou", "type": "wordlist", "fichier": WORDLISTS["rockyou"]},
+]
+
 
 def _run(pcap, bssid, reseau, wordlist):
     global _proc
     keyfile = "/tmp/raton_found.key"
-    try:
-        if os.path.exists(keyfile):
-            os.remove(keyfile)
-    except OSError:
-        pass
+    etat_cassage["etape_total"] = len(ETAGES)
 
-    etat_cassage["etape"] = "rockyou"
-    etat_cassage["etape_num"] = 1
-
-    cmd = ["aircrack-ng", "-w", wordlist, "-l", keyfile, "-b", bssid, pcap]
-    try:
-        _proc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            universal_newlines=True, bufsize=1,
-        )
-    except FileNotFoundError:
-        etat_cassage.update({"actif": False, "fini": True, "message": "aircrack-ng not found"})
-        return
-
-    buf = ""
-    while True:
-        ch = _proc.stdout.read(1)
-        if ch == "":
+    for i, etage in enumerate(ETAGES, start=1):
+        if not etat_cassage["actif"]:
             break
-        buf += ch
-        if ch in ("\r", "\n"):
-            _parser(buf)
-            buf = ""
-    _proc.wait()
 
-    cle = None
-    try:
-        with open(keyfile) as f:
-            cle = f.read().strip()
-    except OSError:
-        pass
+        # Prepare this stage's wordlist
+        if etage["type"] == "constructeur":
+            cles = cles_constructeur(reseau, bssid)
+            if not cles:
+                with _verrou:
+                     etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})
+                continue
+            wl = "/tmp/raton_stage1.txt"
+            with open(wl, "w") as f:
+                f.write("\n".join(cles) + "\n")
+        else:
+            wl = etage["fichier"]
+
+        with _verrou:
+            etat_cassage["etape"] = etage["nom"]
+            etat_cassage["etape_num"] = i
+            etat_cassage["testes"] = 0
+            etat_cassage["total"] = 0
+            etat_cassage["candidat"] = ""
+
+        try:
+            if os.path.exists(keyfile):
+                os.remove(keyfile)
+        except OSError:
+            pass
+
+        cmd = ["aircrack-ng", "-w", wl, "-l", keyfile, "-b", bssid, pcap]
+        try:
+            _proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                universal_newlines=True, bufsize=1,
+            )
+        except FileNotFoundError:
+            etat_cassage.update({"actif": False, "fini": True, "message": "aircrack-ng not found"})
+            return
+
+        buf = ""
+        while True:
+            ch = _proc.stdout.read(1)
+            if ch == "":
+                break
+            buf += ch
+            if ch in ("\r", "\n"):
+                _parser(buf)
+                buf = ""
+        _proc.wait()
+
+        cle = None
+        try:
+            with open(keyfile) as f:
+                cle = f.read().strip()
+        except OSError:
+            pass
+
+        if cle:
+            with _verrou:
+                etat_cassage["actif"] = False
+                etat_cassage["fini"] = True
+                etat_cassage["trouve"] = True
+                etat_cassage["cle"] = cle
+                etat_cassage["etape_echec"] = i
+                etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "cracked"})
+                etat_cassage["message"] = "Cracked"
+            return
+
+        with _verrou:
+            etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "not found"})
 
     with _verrou:
         etat_cassage["actif"] = False
         etat_cassage["fini"] = True
-        if cle:
-            etat_cassage["trouve"] = True
-            etat_cassage["cle"] = cle
-            etat_cassage["message"] = "Cracked"
-        else:
-            etat_cassage["message"] = "Exhausted"
-
+        etat_cassage["message"] = "Exhausted"
 
 def _parser(ligne):
     m = RE_TESTES.search(ligne)
