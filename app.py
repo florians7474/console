@@ -95,11 +95,54 @@ def sauver_miens(ids):
 
 # ---------- Modes ----------
 
+import subprocess
+import urllib.request
+import base64
+
+# Services systemd gérés par chaque mode, dans l'ordre de démarrage
+SERVICES = {
+    "pwnagotchi": ["bettercap", "pwngrid-peer", "pwnagotchi"],
+}
+
+def _systemctl(action, service):
+    try:
+        subprocess.run(
+            ["sudo", "-n", "/usr/bin/systemctl", action, service],
+            check=True, capture_output=True, timeout=20,
+        )
+        return True
+    except Exception:
+        return False
+
 def demarrer(mode):
-    pass
+    for service in SERVICES.get(mode, []):
+        _systemctl("start", service)
 
 def arreter(mode):
-    pass
+    for service in reversed(SERVICES.get(mode, [])):
+        _systemctl("stop", service)
+
+def est_actif(service):
+    try:
+        r = subprocess.run(
+            ["systemctl", "is-active", service],
+            capture_output=True, text=True, timeout=10,
+        )
+        return r.stdout.strip() == "active"
+    except Exception:
+        return False
+
+@app.route("/pwna-ui")
+def pwna_ui():
+    from flask import Response
+    url = "http://127.0.0.1:8080/ui"
+    ident = base64.b64encode(b"pwnagotchi:pwnagotchi").decode()
+    req = urllib.request.Request(url, headers={"Authorization": f"Basic {ident}"})
+    try:
+        with urllib.request.urlopen(req, timeout=5) as r:
+            return Response(r.read(), mimetype="image/png")
+    except Exception:
+        abort(503)
 
 @app.route("/")
 def accueil():
@@ -112,8 +155,13 @@ def mode(nom):
     if nom == "cassage":
         deja = {r["bssid"] for r in charger_liste()}
         return render_template("cassage.html", captures=CAPTURES_SIMULEES, deja=deja)
+    if nom == "pwnagotchi":
+        actif = est_actif("pwnagotchi")
+        etat["mode_actif"] = "pwnagotchi" if actif else etat["mode_actif"]
+        url_ui = "/pwna-ui"
+        return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif, url_ui=url_ui)
     actif = (etat["mode_actif"] == nom)
-    return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif)
+    return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif, url_ui=None)
 
 @app.route("/basculer/<nom>")
 def basculer(nom):

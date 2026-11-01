@@ -25,6 +25,8 @@
     .btn.stop { background:#da3633; }
     .vue { height:272px; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; }
     .vue iframe { width:100%; height:100%; border:0; }
+    .vue .pwna-live { width:100%; height:100%; object-fit:contain;
+                      image-rendering:pixelated; background:#000; }
     .vide { color:#8b949e; font-size:13px; line-height:1.6; max-width:340px; }
   </style>
 </head>
@@ -41,13 +43,23 @@
   </div>
 
   <div class="vue">
-    {% if actif and infos.url %}
-      <iframe src="{{ infos.url }}"></iframe>
+    {% if actif and url_ui %}
+      <img src="{{ url_ui }}" class="pwna-live" id="pwna-live">
     {% elif actif %}
       <div class="vide">Ce mode tourne.<br>Son interface s'affichera ici une fois lancé sur le Pi.</div>
     {% else %}
       <div class="vide">Mode à l'arrêt.<br>Appuie sur « Démarrer » pour le lancer.</div>
     {% endif %}
   </div>
+  <script>
+    (function () {
+      var img = document.getElementById("pwna-live");
+      if (img) {
+        setInterval(function () {
+          img.src = "/pwna-ui?t=" + Date.now();
+        }, 2000);
+      }
+    })();
+  </script>
 </body>
 </html>
