@@ -104,6 +104,26 @@ SERVICES = {
     "pwnagotchi": ["bettercap", "pwngrid-peer", "pwnagotchi"],
 }
 
+import glob
+
+def detecter_cle_monitor():
+    """Retourne le nom de la 1re interface wlan capable de mode monitor, sinon None."""
+    for chemin in sorted(glob.glob("/sys/class/net/wlan*")):
+        iface = os.path.basename(chemin)
+        try:
+            with open(os.path.join(chemin, "phy80211/name")) as f:
+                phy = f.read().strip()
+            infos = subprocess.run(
+                ["iw", "phy", phy, "info"],
+                capture_output=True, text=True, timeout=10,
+            ).stdout
+            # On cible la section des modes supportés
+            if "* monitor" in infos:
+                return iface
+        except Exception:
+            continue
+    return None
+
 def _systemctl(action, service):
     try:
         subprocess.run(
