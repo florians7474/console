@@ -37,6 +37,9 @@
     .solide { color:#2ea043; }
     .detail { font-size:13px; color:#c9d1d9; line-height:1.6; max-width:360px; }
     .detail .cle { font-family:ui-monospace,Consolas,monospace; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:2px 8px; }
+    .stopbtn { display:block; margin:14px auto 0; border:1px solid #da3633; color:#da3633;
+               background:none; border-radius:8px; padding:9px 20px; font-size:13px;
+               font-weight:600; cursor:pointer; }
     .hide { display:none; }
   </style>
 </head>
@@ -54,6 +57,7 @@
       <div class="bar"><i id="bar"></i></div>
       <div class="stats"><span id="tested">0 keys</span><span id="speed">0 k/s</span></div>
       <div class="try">testing: <span id="cand">…</span></div>
+<button class="stopbtn" id="stopbtn" onclick="stopIt()">Stop</button>
     </div>
 
     <div id="fin" class="fin hide">
@@ -63,6 +67,10 @@
   </div>
 
   <script>
+    function stopIt(){
+      document.getElementById('stopbtn').textContent = 'Stopping…';
+      fetch('/cassage/stop').catch(()=>{});
+    }
     function fmt(n){ return n.toLocaleString('en-US'); }
     var timer = setInterval(tick, 1000);
     tick();

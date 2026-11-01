@@ -248,6 +248,11 @@ def cassage_tester(bssid):
 def cassage_etat():
     return jsonify(raton_engine.etat_cassage)
 
+@app.route("/cassage/stop")
+def cassage_stop():
+    raton_engine.arreter()
+    return jsonify({"ok": True})
+
 @app.route("/carte")
 def carte():
     deja = {r["bssid"] for r in charger_liste()}
