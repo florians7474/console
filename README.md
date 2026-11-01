@@ -41,8 +41,8 @@ The Pi 5 built-in Wi-Fi does not support monitor mode, so a compatible USB adapt
 
 A single command on a freshly flashed Pi:
 
-    git clone https://github.com/florians7474/console.git
-    cd console
+    git clone https://github.com/florians7474/fennec.git
+    cd fennec
     ./install.sh
 
 The script is idempotent and adapts to any user. It installs the system packages, sets up Pwnagotchi in an isolated environment, compiles pwngrid, generates a random password for bettercap, and configures the services. No sensitive data is stored in the repository.
