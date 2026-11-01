@@ -1,0 +1,27 @@
+[main]
+name = "fennec"
+lang = "en"
+iface = "wlan1"
+
+[main.plugins.grid]
+enabled = false
+report = false
+
+[main.plugins.auto-update]
+enabled = false
+
+[main.plugins.fix_services]
+enabled = false
+
+[personality]
+advertise = false
+deauth = true
+associate = true
+
+[ui.web]
+enabled = true
+address = "0.0.0.0"
+port = 8080
+
+[ui.display]
+enabled = false

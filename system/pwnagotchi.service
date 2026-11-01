@@ -1,0 +1,13 @@
+[Unit]
+Description=pwnagotchi
+After=bettercap.service
+Wants=bettercap.service
+
+[Service]
+Type=simple
+ExecStart=__VENV__/bin/pwnagotchi
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

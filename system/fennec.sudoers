@@ -1,0 +1,1 @@
+__USER__ ALL=(root) NOPASSWD: /usr/bin/systemctl start bettercap, /usr/bin/systemctl stop bettercap, /usr/bin/systemctl start pwngrid-peer, /usr/bin/systemctl stop pwngrid-peer, /usr/bin/systemctl start pwnagotchi, /usr/bin/systemctl stop pwnagotchi
