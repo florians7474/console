@@ -57,7 +57,8 @@ echo "==> Mot de passe bettercap généré."
 # --- 5. Config Pwnagotchi + caplet ---
 echo "==> Mise en place de la config Pwnagotchi..."
 sudo mkdir -p /etc/pwnagotchi
-sudo cp "$SYS/config.toml" /etc/pwnagotchi/config.toml
+sudo sed "s/__BETTERCAP_PASS__/$BC_PASS/" "$SYS/config.toml" \
+    | sudo tee /etc/pwnagotchi/config.toml > /dev/null
 sudo sed "s/__BETTERCAP_PASS__/$BC_PASS/" "$SYS/pwnagotchi-auto.cap" \
     | sudo tee /etc/pwnagotchi/pwnagotchi-auto.cap > /dev/null
 

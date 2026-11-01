@@ -25,3 +25,7 @@ port = 8080
 
 [ui.display]
 enabled = false
+
+[bettercap]
+username = "pwnagotchi"
+password = "__BETTERCAP_PASS__"
