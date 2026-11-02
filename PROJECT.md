@@ -111,7 +111,13 @@ dictionary+rules (John: john --stdout --rules | aircrack-ng -w -), rockyou.
    + real-cracked-keys stage
 2. Reorder ETAGES per the plan; add 1h time cap + time gauge to John & rockyou;
    switch John to incremental and rockyou to random read
-3. Clearer GPU export (a real .hc22000 download button)
+3. Clearer GPU export — one-click handoff, so the user has nothing to copy:
+   - a download button for the already-generated .hc22000 file (no more
+     copy-pasting the hash)
+   - a ready command pointing at that file + a known wordlist, e.g.
+     hashcat -m 22000 fennec_<box>.hc22000 rockyou.txt -r best64.rule
+   - optionally a one-click script (crack.sh / crack.bat) that fetches the
+     wordlist if needed and launches hashcat, so there is zero manual step
 4. Fold Raton's install into install.sh (routerkeygen, hcxtools, John, wordlists)
 
 ## Install (showcase)
