@@ -15,12 +15,21 @@ Ethernet access = implicit authorization (physical act), so the BSSID lock
 only applies to Wi-Fi.
 
 ## Hardware
+
+### Owned / final build
 - Raspberry Pi 5, Raspberry Pi OS 64-bit desktop (hostname fennec, user florian)
-- Reference screen: 3.5" 480x320 (UI built at this size)
-- Wi-Fi USB adapter required for monitor mode (Pi 5 built-in chip can't do it):
-  Alfa AWUS036ACH (RTL8812AU) for tests, AWUS036AXM (MT7921AU) for final use
-- Auto-detection: first wlan* whose phy advertises monitor mode is picked (no
-  hardcoded interface name)
+- Screen: Waveshare 3.5" RPi LCD (C), resistive touch, 480x320, high-speed SPI
+  (the UI is built at 480x320, fits without rework; needs the SPI overlay
+  enabled in config.txt at mount time)
+- Wi-Fi USB adapter (monitor mode, required — Pi 5 built-in chip can't do it):
+  Alfa AWUS036AXM (MediaTek MT7921AU), plugs straight into USB. Auto-detected
+  by Fennec (first wlan* whose phy advertises monitor mode), no config needed.
+- GPS: VK-162 USB GPS module (waterproof, for the Carte / wardriving module —
+  tags each captured network with its position)
+
+### Test gear
+- Alfa AWUS036ACH (Realtek RTL8812AU) — validated in monitor mode as wlan1,
+  used as the test adapter
 
 ## Ports
 Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
