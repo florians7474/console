@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=480, initial-scale=1">
   <title>Fennec</title>
-  <link rel="icon" type="image/svg+xml" href="/static/fennec.svg">
+  <link rel="icon" type="image/png" href="/static/fennec.png">
   <script>
     // Splash uniquement au demarrage de l'appli, pas a chaque retour a l'accueil.
     try {
@@ -32,13 +32,13 @@
       animation:boot 2s ease forwards;
     }
     .splash img { width:140px; animation:pop .6s ease both; }
-    .splash .marque { font-size:30px; font-weight:800; letter-spacing:3px; }
+    .splash .marque { color:#01F994; font-size:30px; font-weight:800; letter-spacing:3px; }
     @keyframes boot { 0%,55%{opacity:1;visibility:visible;} 100%{opacity:0;visibility:hidden;} }
     @keyframes pop { 0%{transform:scale(.6);opacity:0;} 100%{transform:scale(1);opacity:1;} }
 
     .entete { height:46px; flex:0 0 auto; display:flex; align-items:center; gap:9px; padding:0 12px; }
     .entete > img { width:28px; height:28px; }
-    .entete .marque { font-size:17px; font-weight:700; letter-spacing:.5px; }
+    .entete .marque { color:#01F994; font-size:17px; font-weight:700; letter-spacing:.5px; }
     .entete .sp { flex:1; }
     .conn { display:flex; align-items:center; gap:6px; text-decoration:none;
             background:#21262d; border:1px solid #30363d; border-radius:20px; padding:5px 11px;
@@ -80,12 +80,12 @@
 <body>
 
   <div class="splash">
-    <img src="/static/fennec.svg" alt="Fennec">
+    <img src="/static/fennec.png" alt="Fennec">
     <div class="marque">FENNEC</div>
   </div>
 
   <div class="entete">
-    <img src="/static/fennec.svg" alt="">
+    <img src="/static/fennec.png" alt="">
     <div class="marque">Fennec</div>
     <div class="sp"></div>
     <a class="conn {{ 'ok' if reseau }}" href="/connexion">
