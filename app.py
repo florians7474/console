@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import raton_engine
 from flask import Flask, render_template, redirect, url_for, abort, request, jsonify
@@ -16,34 +17,6 @@ MODES = {
     "cassage":    {"nom": "Raton",      "classe": "cass",  "url": None},
     "bjorn":      {"nom": "Bjorn",      "classe": "bjorn", "url": None},
 }
-
-RESEAUX_SIMULES = [
-    {"nom": "Livebox-2A3F",   "bssid": "34:27:92:AA:2A:3F", "signal": -41},
-    {"nom": "Freebox-Flo",    "bssid": "F4:CA:E5:11:88:0C", "signal": -55},
-    {"nom": "SFR_1B20",       "bssid": "68:A3:78:1B:20:9D", "signal": -67},
-    {"nom": "Bbox-6E1A",      "bssid": "00:1A:2B:6E:1A:44", "signal": -72},
-    {"nom": "AndroidAP_x9",   "bssid": "DA:A1:19:7C:3E:F0", "signal": -80},
-]
-
-RESEAUX_PWNA = [
-    {"nom": "Livebox-2A3F",   "bssid": "34:27:92:AA:2A:3F", "signal": -43},
-    {"nom": "Freebox-Flo",    "bssid": "F4:CA:E5:11:88:0C", "signal": -58},
-    {"nom": "Livebox-9C01",   "bssid": "34:27:92:9C:01:7B", "signal": -61},
-    {"nom": "orange-FA22",    "bssid": "5C:DC:96:FA:22:10", "signal": -66},
-    {"nom": "DIRECT-ab-HP",   "bssid": "9A:2B:0E:AB:33:5C", "signal": -70},
-    {"nom": "Netgear_Invite", "bssid": "A0:40:A0:77:19:2D", "signal": -77},
-    {"nom": "(hidden)",       "bssid": "C8:D1:2A:55:71:EE", "signal": -82},
-]
-
-CAPTURES_SIMULEES = [
-    {"nom": "Livebox-2A3F", "bssid": "34:27:92:AA:2A:3F",
-     "sim": {"trouvee": True, "cle": "soleil2019", "etape": "dictionary + rules", "temps": "23 s"}},
-    {"nom": "Freebox-Flo", "bssid": "F4:CA:E5:11:88:0C", "sim": {"trouvee": False}},
-    {"nom": "SFR_1B20", "bssid": "68:A3:78:1B:20:9D",
-     "sim": {"trouvee": True, "cle": "julien1985", "etape": "dictionary", "temps": "6 s"}},
-    {"nom": "Bbox-6E1A", "bssid": "00:1A:2B:6E:1A:44", "sim": {"trouvee": False}},
-    {"nom": "orange-FA22", "bssid": "5C:DC:96:FA:22:10", "sim": {"trouvee": False}},
-]
 
 RESEAUX_GEO = [
     {"nom": "Livebox-2A3F", "bssid": "34:27:92:AA:2A:3F", "lat": 48.8566, "lon": 2.3522, "signal": -41},
@@ -193,13 +166,46 @@ def lire_handshakes():
             captures[bssid] = {"nom": nom, "bssid": bssid, "fichier": f}
     return sorted(captures.values(), key=lambda c: c["nom"].lower())
 
+def scan_direct():
+    try:
+        res = subprocess.run(
+            ["nmcli", "-t", "-f", "SSID,SIGNAL,BSSID", "dev", "wifi", "list", "--rescan", "yes"],
+            capture_output=True, text=True, timeout=25
+        )
+    except Exception:
+        return []
+    reseaux = {}
+    for ligne in res.stdout.splitlines():
+        champs = re.split(r"(?<!\\):", ligne)
+        if len(champs) < 3:
+            continue
+        ssid = champs[0].replace("\\:", ":").strip()
+        signal = champs[1].strip()
+        bssid = champs[2].replace("\\:", ":").upper().strip()
+        if not bssid or bssid in reseaux:
+            continue
+        try:
+            dbm = int(signal) // 2 - 100
+        except ValueError:
+            dbm = None
+        reseaux[bssid] = {"nom": ssid or "(hidden)", "bssid": bssid, "signal": dbm}
+    return sorted(reseaux.values(), key=lambda r: -(r["signal"] if r["signal"] is not None else -999))
+
 @app.route("/mode/<nom>")
 def mode(nom):
     if nom not in MODES:
         abort(404)
+
     if nom == "cassage":
+        e = raton_engine.etat_cassage
+        if e.get("actif"):
+            capture = next((c for c in lire_handshakes()
+                            if c["bssid"] == e.get("bssid")), None)
+            if capture:
+                return render_template("cassage_resultat.html", c=capture)
         deja = {r["bssid"] for r in charger_liste()}
         return render_template("cassage.html", captures=lire_handshakes(), deja=deja)
+
     if nom == "pwnagotchi":
         actif = est_actif("pwnagotchi")
         etat["mode_actif"] = "pwnagotchi" if actif else etat["mode_actif"]
@@ -240,6 +246,13 @@ def cassage_tester(bssid):
     capture = next((c for c in lire_handshakes() if c["bssid"] == bssid), None)
     if not capture:
         return redirect(url_for("mode", nom="cassage"))
+    # Raton prend la main : couper les modes qui tournent (Pwnagotchi / Bjorn)
+    if est_actif("pwnagotchi"):
+        arreter("pwnagotchi")
+    if est_actif("bjorn"):
+        arreter("bjorn")
+    etat["mode_actif"] = "cassage"
+    etat["reseau"] = capture["nom"]
     pcap = os.path.join(HANDSHAKES_DIR, capture["fichier"])
     raton_engine.lancer(pcap, bssid, capture["nom"])
     return render_template("cassage_resultat.html", c=capture)
@@ -416,10 +429,10 @@ def liste_reset():
 def scan():
     source = request.args.get("source", "direct")
     if source == "pwna":
-        reseaux = RESEAUX_PWNA
+        reseaux = lire_handshakes()
     else:
         source = "direct"
-        reseaux = RESEAUX_SIMULES
+        reseaux = scan_direct()
     deja = {r["bssid"] for r in charger_liste()}
     return render_template("scan.html", reseaux=reseaux, deja=deja, source=source)
 
