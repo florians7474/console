@@ -1,25 +1,33 @@
 #!/usr/bin/env bash
-# Monitoring Vigie : MITM (bettercap arp.spoof) pour router le trafic du
-# sous-réseau par le Pi, + tshark pour extraire le SNI (TLS classique ET QUIC)
-# et les requêtes DNS. Sortie : "ip.src <TAB> sni <TAB> dns". Lancé en root.
+# Monitoring Vigie : MITM (bettercap arp.spoof de TOUT le sous-réseau) pour
+# router le trafic par le Pi, + tshark pour extraire le SNI (TLS), les requêtes
+# DNS, et la destination des connexions chiffrées (QUIC). Lancé en root.
 iface=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'dev \K\S+' | head -n1)
 [ -z "$iface" ] && iface=$(ip route 2>/dev/null | grep -oP 'default .*dev \K\S+' | head -n1)
 [ -z "$iface" ] && exit 1
 
-# bettercap : ARP spoof de tout le sous-réseau (routage via le Pi), sans sniff.
-bettercap -iface "$iface" -no-colors \
-  -eval "set arp.spoof.fullduplex true; net.probe on; arp.spoof on" >/dev/null 2>&1 &
+ip4=$(ip -o -4 addr show dev "$iface" 2>/dev/null | grep -oP 'inet \K[0-9.]+' | head -n1)
+sous=""
+[ -n "$ip4" ] && sous="$(echo "$ip4" | cut -d. -f1-3).0/24"
+
+# bettercap : ARP spoof de tout le sous-réseau (cible explicite = la /24, pour
+# spoofer même un appareil endormi au moment du scan), sans sniff.
+if [ -n "$sous" ]; then
+  bettercap -iface "$iface" -no-colors \
+    -eval "set arp.spoof.fullduplex true; set arp.spoof.targets $sous; net.probe on; arp.spoof on" >/dev/null 2>&1 &
+else
+  bettercap -iface "$iface" -no-colors \
+    -eval "set arp.spoof.fullduplex true; net.probe on; arp.spoof on" >/dev/null 2>&1 &
+fi
 BETTER=$!
-# À l'arrêt (ou si tshark meurt), on coupe bettercap pour ne pas laisser le
-# réseau sous ARP spoofing.
 trap 'kill "$BETTER" 2>/dev/null' EXIT INT TERM
 sleep 1
 
-# tshark : débuts de connexion (ClientHello TLS, Initial QUIC) pour le SNI et la
-# destination, + requêtes DNS. Une ligne par événement :
+# tshark : ClientHello TLS (SNI), connexions QUIC (UDP/443 -> destination), et
+# requêtes DNS en clair. Une ligne par événement :
 #   ip.src <TAB> ip.dst <TAB> sni <TAB> dns
 tshark -i "$iface" -l -n -Q \
-  -Y 'tls.handshake.type == 1 || quic.long.packet_type == 0 || (dns.flags.response == 0 && dns.qry.name)' \
+  -Y 'tls.handshake.type == 1 || udp.port == 443 || (dns.flags.response == 0 && dns.qry.name)' \
   -T fields \
   -e ip.src \
   -e ip.dst \

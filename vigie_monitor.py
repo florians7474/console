@@ -31,6 +31,7 @@ _RE_IP = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
 _IGNORER_DOM = re.compile(r"(\.lan|\.local|\.arpa|\.home|\.internal)$", re.I)
 _RE_PRIVE = re.compile(r"^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|224\.|0\.)")
 _cache_rdns = {}
+_vu_dst = {}   # (src, dst) -> dernier ts, pour éviter de retraiter le flot QUIC
 
 
 def _est_prive(ip):
@@ -68,7 +69,8 @@ def _traiter(ligne):
     dst = champs[1].strip()
     sni = champs[2].strip().split(",")[0].strip()
     dns = champs[3].strip().split(",")[0].strip()
-    if not _RE_IP.match(src):
+    # La source doit être un appareil local (écarte les paquets réponse serveur->client)
+    if not _RE_IP.match(src) or not _est_prive(src):
         return
     dom = (sni or dns).lower().rstrip(".")
     if dom:
@@ -77,8 +79,16 @@ def _traiter(ligne):
         _noter(src, dom)
         return
     # Ni SNI ni DNS (handshake chiffré, ex. QUIC/ECH) : on note la destination.
-    if _RE_IP.match(dst) and not _est_prive(dst):
-        _noter(src, _rdns(dst))
+    if not _RE_IP.match(dst) or _est_prive(dst):
+        return
+    cle = (src, dst)
+    now = time.time()
+    if now - _vu_dst.get(cle, 0) < 3:   # anti-flood : 1 fois / 3s par (src,dst)
+        return
+    _vu_dst[cle] = now
+    if len(_vu_dst) > 5000:
+        _vu_dst.clear()
+    _noter(src, _rdns(dst))
 
 
 def _lire(proc):
