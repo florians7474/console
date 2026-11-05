@@ -32,6 +32,8 @@
     .ico.router { color:#28c0d4; }
     .ico.pi { color:#2ea043; }
     .ligne.inconnu .ico { color:#f0883e; }
+    .lien { flex:1; min-width:0; display:flex; align-items:center; gap:10px;
+            text-decoration:none; color:inherit; }
     .infos { flex:1; min-width:0; }
     .rnom { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .rbssid { font-size:11px; color:#8b949e; font-family:ui-monospace,Consolas,monospace;
@@ -58,25 +60,27 @@
   <div class="liste">
     {% for d in appareils %}
     <div class="ligne {{ 'inconnu' if d.inconnu }}">
-      <span class="ico {{ d.type }}">
-        {% if d.type == 'router' %}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 16.5h.01M11 16.5h.01"/><path d="M12 13V9M8.5 9a3.5 3.5 0 0 1 7 0"/>
-        </svg>
-        {% elif d.type == 'pi' %}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="4" y="4" width="16" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>
-        </svg>
-        {% else %}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="6" y="3" width="12" height="18" rx="2"/><path d="M11 18h2"/>
-        </svg>
-        {% endif %}
-      </span>
-      <div class="infos">
-        <div class="rnom">{{ d.nom }}</div>
-        <div class="rbssid">{{ d.ip }}{% if d.mac %} &middot; {{ d.mac }}{% endif %}</div>
-      </div>
+      <a class="lien" href="/vigie/appareil/{{ d.ip }}">
+        <span class="ico {{ d.type }}">
+          {% if d.type == 'router' %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 16.5h.01M11 16.5h.01"/><path d="M12 13V9M8.5 9a3.5 3.5 0 0 1 7 0"/>
+          </svg>
+          {% elif d.type == 'pi' %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="16" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>
+          </svg>
+          {% else %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="3" width="12" height="18" rx="2"/><path d="M11 18h2"/>
+          </svg>
+          {% endif %}
+        </span>
+        <div class="infos">
+          <div class="rnom">{{ d.nom }}</div>
+          <div class="rbssid">{{ d.ip }}{% if d.mac %} &middot; {{ d.mac }}{% endif %}</div>
+        </div>
+      </a>
       {% if d.pi %}
         <span class="chip pi">This Pi</span>
       {% elif d.routeur %}

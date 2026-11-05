@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import socket
 import raton_engine
 from flask import Flask, render_template, redirect, url_for, abort, request, jsonify
 
@@ -235,7 +236,58 @@ def appareils_vigie():
         except Exception:
             return (999,)
     out.sort(key=lambda d: (not d["inconnu"], cle_ip(d)))
+    _dernier_scan.clear()
+    _dernier_scan.update({d["ip"]: d for d in out})
     return out
+
+_dernier_scan = {}
+
+def nom_hote(ip):
+    """Reverse DNS de l'IP, ou None."""
+    try:
+        return socket.gethostbyaddr(ip)[0]
+    except Exception:
+        return None
+
+def scan_ports(ip):
+    """Ports TCP ouverts (top 100, connect scan sans root)."""
+    if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip or ""):
+        return []
+    try:
+        r = subprocess.run(
+            ["nmap", "-sT", "-F", "-n", "--open", ip],
+            capture_output=True, text=True, timeout=90,
+        )
+    except Exception:
+        return []
+    ports = []
+    for ligne in r.stdout.splitlines():
+        m = re.match(r"(\d+)/tcp\s+open\s+(\S+)", ligne.strip())
+        if m:
+            ports.append({"port": int(m.group(1)), "service": m.group(2)})
+    return ports
+
+def deviner_type(ports, vendor):
+    """Devine le type d'appareil à partir des ports ouverts, puis du constructeur."""
+    svc = {p["port"] for p in ports}
+    if 9100 in svc or 631 in svc:
+        return "Printer"
+    if 554 in svc or 8554 in svc or 37777 in svc:
+        return "IP camera"
+    if 445 in svc or 139 in svc:
+        if 3389 in svc or 5357 in svc:
+            return "Windows PC"
+        return "File share / NAS"
+    if 22 in svc:
+        return "Linux / server"
+    if 80 in svc or 443 in svc or 8080 in svc:
+        return "Web device / IoT"
+    v = (vendor or "").lower()
+    if any(k in v for k in ["apple", "samsung", "xiaomi", "huawei", "google", "oneplus", "oppo"]):
+        return "Phone / mobile"
+    if "raspberry" in v:
+        return "Raspberry Pi"
+    return "Unknown"
 
 @app.route("/")
 def accueil():
@@ -489,6 +541,20 @@ def vigie_pasmien(mac):
     ids = [i for i in charger_miens() if i.upper() != mac]
     sauver_miens(ids)
     return redirect(url_for("vigie"))
+
+@app.route("/vigie/appareil/<ip>")
+def vigie_appareil(ip):
+    if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip):
+        return redirect(url_for("vigie"))
+    d = _dernier_scan.get(ip) or {
+        "ip": ip, "mac": None, "vendor": None, "nom": ip,
+        "type": "device", "pi": False, "routeur": False,
+        "mien": False, "inconnu": True,
+    }
+    ports = scan_ports(ip)
+    return render_template("vigie_detail.html", d=d, ports=ports,
+                           type_devine=deviner_type(ports, d.get("vendor")),
+                           hote=nom_hote(ip))
 
 # ---------- Whitelist (routes) ----------
 

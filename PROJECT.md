@@ -76,7 +76,13 @@ coded in-house.
 - Mine vs unknown is keyed by MAC (stable across IP changes), stored in
   mes_appareils.json (gitignored). One tap on an "Unknown" chip marks it mine.
 - Unknown devices sort to the top; header shows "N devices · M unknown".
-- Scans on open; "Rescan" reloads. Traffic/domains per device is v2 (MITM).
+- Scans on open; "Rescan" reloads.
+- Tap a device -> detail (vigie_detail.html): a top-100 TCP port scan
+  (nmap -sT -F, rootless connect scan, no sudo), open ports + services, a
+  device-type guess from the ports then the vendor, hostname (reverse DNS),
+  MAC and vendor. Last scan cached in _dernier_scan so the detail doesn't
+  re-sweep the whole subnet.
+- Traffic/domains per device is v2 (MITM via bettercap).
 
 ## Raton — cracking engine
 Local cracking = aircrack-ng (stable on ARM, CPU). hashcat is NOT used locally
