@@ -16,6 +16,7 @@
       background:#161b22; border-bottom:1px solid #30363d;
     }
     .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
+    .tete { width:28px; height:28px; }
     .titre { font-size:16px; font-weight:600; flex:1; }
     .scan-btn { border:1px solid #28c0d4; color:#28c0d4; background:none; border-radius:8px;
                 padding:7px 12px; font-size:13px; font-weight:600; cursor:pointer; }
@@ -72,6 +73,7 @@
 <body>
   <div class="barre">
     <a class="retour" href="/">&larr;</a>
+    <img class="tete" src="/static/vigie.png" alt="">
     <div class="titre">Vigie</div>
     <button class="scan-btn watch" id="watch" onclick="basculerWatch()">Watch</button>
     <button class="scan-btn" id="rescan" onclick="scanner()">Rescan</button>
