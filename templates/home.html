@@ -129,10 +129,10 @@
       <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='bjorn' else 'stopped' }}</div>
     </a>
 
-    <a class="app" href="/vigie">
+    <a class="app {{ 'on' if actif=='vigie' }}" href="/vigie">
       <div class="icone vigie"><img src="/static/vigie.png" alt="Vigie"></div>
       <div class="nom">Vigie</div>
-      <div class="etat"><span class="pastille"></span>network</div>
+      <div class="etat"><span class="pastille"></span>{{ 'watching' if actif=='vigie' else 'idle' }}</div>
     </a>
 
     <a class="app" href="/carte">
@@ -143,7 +143,7 @@
         </svg>
       </div>
       <div class="nom">Carte</div>
-      <div class="etat"><span class="pastille"></span>networks</div>
+      <div class="etat"><span class="pastille"></span>soon</div>
     </a>
 
   </div>
