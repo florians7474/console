@@ -526,10 +526,13 @@ def connexion_stop():
 
 @app.route("/vigie")
 def vigie():
+    return render_template("vigie.html")
+
+@app.route("/vigie/data")
+def vigie_data():
     appareils = appareils_vigie()
     inconnus = sum(1 for a in appareils if a["inconnu"])
-    return render_template("vigie.html", appareils=appareils,
-                           total=len(appareils), inconnus=inconnus)
+    return jsonify({"appareils": appareils, "total": len(appareils), "inconnus": inconnus})
 
 @app.route("/vigie/mien/<mac>")
 def vigie_mien(mac):
@@ -538,14 +541,14 @@ def vigie_mien(mac):
     if mac not in ids:
         ids.append(mac)
         sauver_miens(ids)
-    return redirect(url_for("vigie"))
+    return jsonify({"ok": True})
 
 @app.route("/vigie/pasmien/<mac>")
 def vigie_pasmien(mac):
     mac = mac.upper()
     ids = [i for i in charger_miens() if i.upper() != mac]
     sauver_miens(ids)
-    return redirect(url_for("vigie"))
+    return jsonify({"ok": True})
 
 @app.route("/vigie/appareil/<ip>")
 def vigie_appareil(ip):
