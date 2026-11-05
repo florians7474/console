@@ -21,7 +21,7 @@ echo "==> Fennec : installation pour l'utilisateur '$USER_NAME'"
 echo "==> Installation des paquets apt..."
 sudo apt update
 sudo apt install -y \
-    git python3-venv python3-flask aircrack-ng bettercap golang \
+    git python3-venv python3-dev python3-flask aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw \
     john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev
