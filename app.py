@@ -249,14 +249,19 @@ def nom_hote(ip):
     except Exception:
         return None
 
+PORTS_VIGIE = ("21,22,23,25,53,80,110,135,139,143,443,445,515,554,587,631,993,"
+               "995,1723,3306,3389,5000,5357,5900,8000,8080,8443,9100,32400,"
+               "37777,49152")
+
 def scan_ports(ip):
-    """Ports TCP ouverts (top 100, connect scan sans root)."""
+    """Ports TCP ouverts (liste ciblée, connect scan sans root, rapide)."""
     if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip or ""):
         return []
     try:
         r = subprocess.run(
-            ["nmap", "-sT", "-F", "-n", "--open", ip],
-            capture_output=True, text=True, timeout=90,
+            ["nmap", "-sT", "-Pn", "-n", "-T4", "--max-retries", "1",
+             "--host-timeout", "25s", "-p", PORTS_VIGIE, "--open", ip],
+            capture_output=True, text=True, timeout=40,
         )
     except Exception:
         return []
