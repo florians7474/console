@@ -24,7 +24,7 @@ sudo apt install -y \
     git python3-venv python3-flask aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw \
-    john hcxtools wordlists qtbase5-dev qt5-qmake libssl-dev
+    john hcxtools qtbase5-dev qt5-qmake libssl-dev
     
 # --- 2. Environnement Python (venv) + Pwnagotchi ---
 if [ ! -d "$VENV" ]; then
@@ -99,9 +99,14 @@ fi
 # Wordlists (dans /usr/share/wordlists)
 sudo mkdir -p /usr/share/wordlists
 
-# rockyou (fourni compresse par le paquet wordlists)
-if [ ! -f /usr/share/wordlists/rockyou.txt ] && [ -f /usr/share/wordlists/rockyou.txt.gz ]; then
-    sudo gunzip -k /usr/share/wordlists/rockyou.txt.gz
+# rockyou (téléchargé depuis SecLists, extrait dans /usr/share/wordlists)
+if [ ! -f /usr/share/wordlists/rockyou.txt ]; then
+    sudo wget -O /tmp/rockyou.txt.tar.gz \
+        https://github.com/danielmiessler/SecLists/raw/master/Passwords/Leaked-Databases/rockyou.txt.tar.gz
+    sudo tar -xzf /tmp/rockyou.txt.tar.gz -C /usr/share/wordlists/
+    sudo rm -f /tmp/rockyou.txt.tar.gz
+    sudo chown root:root /usr/share/wordlists/rockyou.txt
+    sudo chmod 644 /usr/share/wordlists/rockyou.txt
 fi
 
 # 10k mots de passe courants (SecLists)
