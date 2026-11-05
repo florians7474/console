@@ -26,7 +26,14 @@
     .vue { height:272px; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; }
     .vue.plein { padding:0; }
     .vue .pwna-live { width:100%; height:100%; object-fit:contain;
-                      image-rendering:pixelated; background:#000; }
+                      image-rendering:pixelated; background:#000; display:none; }
+    .vue .pwna-live.prete { display:block; }
+    .chargement { display:flex; flex-direction:column; align-items:center; gap:14px; color:#8b949e; }
+    .chargement .anneau { width:40px; height:40px; border-radius:50%;
+                          border:3px solid #21262d; border-top-color:#19e38c;
+                          animation:tourne 0.9s linear infinite; }
+    .chargement .txt { font-size:13px; }
+    @keyframes tourne { to { transform:rotate(360deg); } }
     .vide { color:#8b949e; font-size:13px; line-height:1.6; max-width:340px; }
     .cadre { position:relative; width:480px; height:272px; overflow:hidden; background:#000; }
     .cadre iframe { position:absolute; top:0; left:0; width:820px; height:465px; border:0;
@@ -49,7 +56,11 @@
     {% if actif and url_iframe %}
       <div class="cadre"><iframe src="{{ url_iframe }}"></iframe></div>
     {% elif actif and url_ui %}
-      <img src="{{ url_ui }}" class="pwna-live" id="pwna-live">
+      <div class="chargement" id="pwna-chargement">
+        <div class="anneau"></div>
+        <div class="txt">Pwnagotchi is starting…</div>
+      </div>
+      <img class="pwna-live" id="pwna-live" alt="">
     {% elif actif %}
       <div class="vide">This mode is running.<br>Its interface will appear here once started on the Pi.</div>
     {% elif reseau_scan %}
@@ -72,11 +83,26 @@
   <script>
     (function () {
       var img = document.getElementById("pwna-live");
-      if (img) {
-        setInterval(function () {
-          img.src = "/pwna-ui?t=" + Date.now();
-        }, 2000);
+      var charge = document.getElementById("pwna-chargement");
+      if (!img) return;
+      // On précharge dans une image temporaire : tant que l'UI de Pwnagotchi
+      // n'est pas prête (erreur 503), on garde l'animation et on réessaie, sans
+      // jamais afficher l'icône d'image cassée. On n'affiche que ce qui charge.
+      function rafraichir() {
+        var tmp = new Image();
+        tmp.onload = function () {
+          img.src = tmp.src;
+          img.classList.add("prete");
+          if (charge) charge.style.display = "none";
+        };
+        tmp.onerror = function () {
+          img.classList.remove("prete");
+          if (charge) charge.style.display = "flex";
+        };
+        tmp.src = "/pwna-ui?t=" + Date.now();
       }
+      rafraichir();
+      setInterval(rafraichir, 2000);
     })();
   </script>
 </body>
