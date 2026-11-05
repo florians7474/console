@@ -95,7 +95,7 @@ fi
 if [ ! -d "$USER_HOME/bjorn-venv" ]; then
     python3 -m venv "$USER_HOME/bjorn-venv"
 fi
-"$USER_HOME/bjorn-venv/bin/pip" install --prefer-binary -r "$USER_HOME/Bjorn/requirements.txt"
+"$USER_HOME/bjorn-venv/bin/pip" install --prefer-binary -r "$SYS/bjorn-requirements.txt"
 
 # Script de la console web (chemin adapté à l'utilisateur)
 sudo sed "s#__HOME__#$USER_HOME#g" "$SYS/fennec-bjorn-console" \
