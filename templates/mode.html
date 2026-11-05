@@ -52,6 +52,19 @@
       <img src="{{ url_ui }}" class="pwna-live" id="pwna-live">
     {% elif actif %}
       <div class="vide">This mode is running.<br>Its interface will appear here once started on the Pi.</div>
+    {% elif reseau_scan %}
+      {% if reseau_scan.type %}
+        <div class="vide">
+          Bjorn scans the network this Pi is connected to:<br>
+          <b>{{ reseau_scan.nom }}</b>{% if reseau_scan.sous_reseau %} &middot; {{ reseau_scan.sous_reseau }}{% endif %}<br><br>
+          Press "Start" to scan and probe the devices on it.
+        </div>
+      {% else %}
+        <div class="vide">
+          This Pi isn't connected to any network.<br>
+          Plug in Ethernet or join Wi-Fi, then press "Start".
+        </div>
+      {% endif %}
     {% else %}
       <div class="vide">Mode stopped.<br>Press "Start" to launch it.</div>
     {% endif %}

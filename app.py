@@ -171,6 +171,17 @@ def etat_connexion():
         return {"type": "wifi", "nom": wifi or "Wi-Fi"}
     return {"type": None, "nom": "Offline"}
 
+def sous_reseau_local():
+    """Sous-réseau /24 du Pi (ex. 192.168.1.0/24), ou None."""
+    try:
+        r = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=5)
+    except Exception:
+        return None
+    for tok in r.stdout.split():
+        if tok.count(".") == 3 and not tok.startswith("127."):
+            return ".".join(tok.split(".")[:3]) + ".0/24"
+    return None
+
 @app.route("/")
 def accueil():
     mode_actif = etat["mode_actif"]
@@ -276,8 +287,11 @@ def mode(nom):
         etat["mode_actif"] = "bjorn" if actif else etat["mode_actif"]
         hote = request.host.split(":")[0]
         url_iframe = f"http://{hote}:8000/"
+        conn = etat_connexion()
+        reseau_scan = {"type": conn["type"], "nom": conn["nom"],
+                       "sous_reseau": sous_reseau_local()}
         return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
-                               url_ui=None, url_iframe=url_iframe)
+                               url_ui=None, url_iframe=url_iframe, reseau_scan=reseau_scan)
     actif = (etat["mode_actif"] == nom)
     return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
                            url_ui=None, url_iframe=None)
