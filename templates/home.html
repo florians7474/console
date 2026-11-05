@@ -88,11 +88,18 @@
     <img src="/static/fennec.png" alt="">
     <div class="marque">Fennec</div>
     <div class="sp"></div>
-    <a class="conn {{ 'ok' if reseau }}" href="/connexion">
+    <a class="conn {{ 'ok' if connexion.type }}" href="/connexion">
+      {% if connexion.type == 'ethernet' %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="3" width="6" height="4" rx="1"/><rect x="3" y="17" width="6" height="4" rx="1"/><rect x="15" y="17" width="6" height="4" rx="1"/>
+        <path d="M12 7v3M6 17v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/>
+      </svg>
+      {% else %}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="0.6"/>
       </svg>
-      <span>{{ reseau.nom if reseau else 'Not connected' }}</span>
+      {% endif %}
+      <span>{{ connexion.nom }}</span>
     </a>
     <a class="reglages" href="/liste" title="Allowed networks">
       <svg viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

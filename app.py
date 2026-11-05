@@ -146,6 +146,31 @@ def pwna_ui():
     except Exception:
         abort(503)
 
+def etat_connexion():
+    """Vraie connexion réseau du Pi : ethernet, wifi (+SSID) ou rien."""
+    try:
+        r = subprocess.run(
+            ["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION", "device", "status"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except Exception:
+        return {"type": None, "nom": "Offline"}
+    eth = wifi = None
+    for ligne in r.stdout.splitlines():
+        champs = ligne.split(":")
+        if len(champs) < 3 or champs[1] != "connected":
+            continue
+        typ, conn = champs[0], ":".join(champs[2:])
+        if typ == "ethernet" and not eth:
+            eth = conn
+        elif typ == "wifi" and not wifi:
+            wifi = conn
+    if eth:
+        return {"type": "ethernet", "nom": "Ethernet"}
+    if wifi:
+        return {"type": "wifi", "nom": wifi or "Wi-Fi"}
+    return {"type": None, "nom": "Offline"}
+
 @app.route("/")
 def accueil():
     mode_actif = etat["mode_actif"]
@@ -153,7 +178,7 @@ def accueil():
     if mode_actif == "cassage" and not raton_engine.etat_cassage.get("actif"):
         mode_actif = None
         etat["mode_actif"] = None
-    return render_template("home.html", actif=mode_actif, reseau=etat["reseau"])
+    return render_template("home.html", actif=mode_actif, connexion=etat_connexion())
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
 
