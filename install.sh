@@ -25,7 +25,13 @@ sudo apt install -y \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw \
     john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev
-    
+
+# --- 1b. Activation du SPI (requis par l'écran e-Paper de Bjorn) ---
+# Sans SPI, /dev/spidev0.0 n'existe pas et Bjorn plante à l'initialisation de
+# l'écran. Prend effet au prochain redémarrage.
+echo "==> Activation du SPI..."
+sudo raspi-config nonint do_spi 0 || true
+
 # --- 2. Environnement Python (venv) + Pwnagotchi ---
 if [ ! -d "$VENV" ]; then
     echo "==> Création du venv Python..."
@@ -158,5 +164,6 @@ fi
 
 echo ""
 echo "==> Installation terminée."
-echo "    Lance Fennec avec :  python3 $REPO/app.py"
-echo "    Puis ouvre :         http://<IP-du-Pi>:5000/"
+echo "    Redémarre une fois pour activer le SPI :  sudo reboot"
+echo "    Lance ensuite Fennec avec :  python3 $REPO/app.py"
+echo "    Puis ouvre :                 http://<IP-du-Pi>:5000/"

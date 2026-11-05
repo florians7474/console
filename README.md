@@ -17,11 +17,16 @@ The project also serves as a hands-on sandbox for learning offensive security. T
 | **Pwnagotchi** | Passive Wi-Fi handshake capture | ✅ Working |
 | **Bjorn** | Network reconnaissance and targeted attacks | ✅ Working |
 | **Raton** | Offline WPA cracking on your own captures | ✅ Working |
-| **Connexion** | Join a whitelisted network | 🚧 In progress |
 | **Vigie** | Network monitor (connected devices, contacted domains) | 🚧 Planned |
 | **Carte** | Network mapping (wardriving) | 🚧 Planned |
 
-**Pwnagotchi**, **Bjorn** and **Raton** are operational: automatic installation, control from the tile, and a live view inside the interface. Raton runs a 9-stage escalation (factory keys, ESSID profiling, known cracked keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-step handoff to GPU cracking.
+The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and opens the allowed-networks manager where you scan for networks and pick the ones you are allowed to test.
+
+**Pwnagotchi**, **Bjorn** and **Raton** are operational: automatic installation, control from the tile, and a live view inside the interface.
+
+- **Pwnagotchi** captures handshakes in the background and mirrors its head live in the tile.
+- **Bjorn** scans and probes the network the Pi is currently on. The screen names that network and its subnet before you start, so there is no doubt about what is being audited, and its live console streams inside the tile.
+- **Raton** runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known cracked keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-step handoff to GPU cracking. Captures with no usable handshake are flagged and cannot be tested, so a network is never wrongly reported as robust.
 
 ## Legal scope
 
@@ -47,11 +52,13 @@ A single command on a freshly flashed Pi:
     cd fennec
     ./install.sh
 
-The script is idempotent and adapts to any user. It installs the system packages (including nmap), sets up Pwnagotchi in an isolated venv, compiles pwngrid, builds routerkeygen-cli, installs Bjorn in its own venv from a pinned requirements file that works on Python 3.13, downloads the Raton wordlists (10k-common, probable-wpa and rockyou from SecLists), generates a random bettercap password, and configures all systemd services. No sensitive data is stored in the repository.
+The script is idempotent and adapts to any user. It installs the system packages (including nmap), enables SPI (needed by Bjorn's e-paper display), sets up Pwnagotchi in an isolated venv, compiles pwngrid, builds routerkeygen-cli, installs Bjorn in its own venv from a pinned requirements file that works on Python 3.13, downloads the Raton wordlists (10k-common, probable-wpa and rockyou from SecLists), generates a random bettercap password, and configures all systemd services. No sensitive data is stored in the repository.
+
+Reboot once after the install so SPI takes effect, then start Fennec.
 
 ## Usage
 
-Once installed, start Fennec and open the interface from a browser on the local network:
+Start Fennec and open the interface from a browser on the local network:
 
     http://fennec.local:5000/
 
@@ -69,9 +76,10 @@ Click a tile to activate the matching module.
 
 - [x] Fennec launcher and tile interface
 - [x] Pwnagotchi module (install, control, display)
-- [x] One-command installer
+- [x] One-command installer (SPI enabled, works on a fresh card in one pass)
 - [x] Bjorn module (install, control, live console)
 - [x] Raton module (WPA cracking, 9-stage escalation, GPU export)
-- [ ] Connexion tile (real nmcli join/disconnect)
+- [x] Live connection indicator (Ethernet / Wi-Fi / Offline)
+- [ ] Real Wi-Fi join/disconnect from the connection manager (nmcli)
 - [ ] Vigie module (real network monitoring)
 - [ ] Carte module (wardriving map)

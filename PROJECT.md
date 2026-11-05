@@ -49,6 +49,24 @@ by their tile via systemd services kept disabled at boot (sudoers rules allow
 florian to systemctl start/stop them without a password). Only Raton is
 coded in-house.
 
+## Connection, scan and lists
+- Header badge: shows the Pi's real connection, read live from nmcli/hostname
+  at each page load — Ethernet, Wi-Fi + SSID, or Offline. It replaces the old
+  simulated "current network" value, so it never claims a Wi-Fi when the Pi is
+  on Ethernet.
+- Allowed networks (liste_blanche.json, gitignored): the BSSID whitelist, with
+  per-entry key, inline edit, and a Clear all that empties it.
+- Scan page, two tabs:
+  - Direct scan: a live nmcli scan stored as a snapshot (scan_direct.json,
+    gitignored). "Scan" from Allowed networks runs it; "Rescan" refreshes it;
+    Clear all empties the snapshot (it stays empty until the next scan).
+  - Spotted by Pwnagotchi: lists the .pcap captures; Clear all deletes them via
+    a small sudo helper (/usr/local/bin/fennec-clear-handshakes).
+- All Clear all buttons use an in-page 480x320 confirm dialog, not the browser's
+  native popup (which is unusable on the kiosk touchscreen).
+- Bjorn's stopped screen names the network and /24 subnet it will scan (or asks
+  to connect when offline), so the target is obvious before pressing Start.
+
 ## Raton — cracking engine
 Local cracking = aircrack-ng (stable on ARM, CPU). hashcat is NOT used locally
 (segfaults on the Pi's PoCL/OpenCL ARM backend); it is reserved for the GPU
@@ -116,6 +134,10 @@ short candidate is ever shown or tested.
   longer freezes a stage.
 - install.sh now folds all Raton deps (routerkeygen build, hcxtools, John,
   wordlists: 10k-common, probable-wpa-top4800, rockyou).
+- No-handshake guard: before cracking, Raton checks the capture really holds a
+  4-way handshake (aircrack-ng). If not, the Test button is greyed out in the
+  capture list ("· no handshake") and the result reads "No usable handshake"
+  instead of a misleading "Robust". Presence is cached per file (mtime + size).
 
 ### Work left on Raton
 - Clearer GPU export — one-click handoff, so the user has nothing to copy:
@@ -138,6 +160,16 @@ Notes:
 - Bjorn's upstream requirements.txt pins old versions (e.g. Pillow 9.4.0) that
   do not build on Python 3.13; install.sh installs from a pinned
   system/bjorn-requirements.txt instead (Pillow 11.1.0).
+- Bjorn needs more than its 15 upstream deps on Python 3.13 / Trixie: the
+  display/GPIO stack (gpiozero, lgpio, rpi-lgpio, colorzero) for the e-paper
+  init, and legacy-cgi because Python 3.13 removed the stdlib cgi module.
+  python3-dev is installed so netifaces (sdist only) compiles.
+- SPI is enabled by the installer (raspi-config nonint do_spi 0); without it
+  /dev/spidev0.0 is missing and Bjorn crashes on e-paper init. Reboot once
+  after install so it takes effect.
+- Bjorn's web server is patched at install time (allow_reuse_address + a fixed
+  port 8000): upstream jumps to 8001 on a quick Stop/Start because the port is
+  still in TIME_WAIT, which breaks the embedded view. The patch keeps it on 8000.
 
 ## Dev loop
 Edited directly on the Pi and pushed from there.
