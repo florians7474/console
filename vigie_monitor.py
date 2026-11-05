@@ -9,6 +9,7 @@ Une seule colonne de domaine est renseignée par ligne ; on prend la première.
 """
 import os
 import re
+import socket
 import signal
 import subprocess
 import threading
@@ -28,6 +29,26 @@ _verrou = threading.Lock()
 
 _RE_IP = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
 _IGNORER_DOM = re.compile(r"(\.lan|\.local|\.arpa|\.home|\.internal)$", re.I)
+_RE_PRIVE = re.compile(r"^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|224\.|0\.)")
+_cache_rdns = {}
+
+
+def _est_prive(ip):
+    return bool(_RE_PRIVE.match(ip))
+
+
+def _rdns(ip):
+    """Reverse DNS d'une IP de destination (mis en cache), sinon l'IP brute."""
+    if ip in _cache_rdns:
+        return _cache_rdns[ip]
+    nom = None
+    try:
+        nom = socket.gethostbyaddr(ip)[0].lower().rstrip(".")
+    except Exception:
+        nom = None
+    val = nom if (nom and not _IGNORER_DOM.search(nom)) else ip
+    _cache_rdns[ip] = val
+    return val
 
 
 def _noter(ip, domaine):
@@ -39,24 +60,25 @@ def _noter(ip, domaine):
 
 
 def _traiter(ligne):
+    # Champs tshark : ip.src <TAB> ip.dst <TAB> sni <TAB> dns
     champs = ligne.rstrip("\n").split("\t")
-    if len(champs) < 2:
-        return
+    while len(champs) < 4:
+        champs.append("")
     src = champs[0].strip()
-    if not _RE_IP.match(src):        # on ne garde que les sources IPv4
+    dst = champs[1].strip()
+    sni = champs[2].strip().split(",")[0].strip()
+    dns = champs[3].strip().split(",")[0].strip()
+    if not _RE_IP.match(src):
         return
-    dom = ""
-    for c in champs[1:]:             # premier champ domaine non vide (sni, puis dns)
-        c = c.strip().split(",")[0]  # tshark peut concaténer plusieurs valeurs
-        if c:
-            dom = c
-            break
-    if not dom:
+    dom = (sni or dns).lower().rstrip(".")
+    if dom:
+        if _RE_IP.match(dom) or _IGNORER_DOM.search(dom):
+            return
+        _noter(src, dom)
         return
-    dom = dom.lower().rstrip(".")
-    if not dom or _RE_IP.match(dom) or _IGNORER_DOM.search(dom):
-        return
-    _noter(src, dom)
+    # Ni SNI ni DNS (handshake chiffré, ex. QUIC/ECH) : on note la destination.
+    if _RE_IP.match(dst) and not _est_prive(dst):
+        _noter(src, _rdns(dst))
 
 
 def _lire(proc):

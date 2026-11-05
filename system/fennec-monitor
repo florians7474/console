@@ -15,10 +15,13 @@ BETTER=$!
 trap 'kill "$BETTER" 2>/dev/null' EXIT INT TERM
 sleep 1
 
-# tshark : SNI (TLS sur TCP et QUIC) + requêtes DNS, en flux, une ligne par paquet.
+# tshark : débuts de connexion (ClientHello TLS, Initial QUIC) pour le SNI et la
+# destination, + requêtes DNS. Une ligne par événement :
+#   ip.src <TAB> ip.dst <TAB> sni <TAB> dns
 tshark -i "$iface" -l -n -Q \
-  -Y 'tls.handshake.extensions_server_name || (dns.flags.response == 0 && dns.qry.name)' \
+  -Y 'tls.handshake.type == 1 || quic.long.packet_type == 0 || (dns.flags.response == 0 && dns.qry.name)' \
   -T fields \
   -e ip.src \
+  -e ip.dst \
   -e tls.handshake.extensions_server_name \
   -e dns.qry.name
