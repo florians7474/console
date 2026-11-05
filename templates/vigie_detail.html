@@ -75,11 +75,13 @@
 
   <script>
     var IP = {{ d.ip|tojson }};
+    var HOTE = '';
     fetch('/vigie/ports/' + IP).then(function(r){ return r.json(); }).then(function(j){
       var t = document.getElementById('type'); t.textContent = j.type || 'Unknown';
       if(j.hote){
         document.getElementById('hote').textContent = j.hote;
         document.getElementById('champ-hote').style.display = '';
+        HOTE = j.hote.toLowerCase().replace(/\.$/, '');
       }
       var box = document.getElementById('ports');
       var ports = j.ports || [];
@@ -107,7 +109,7 @@
           box.innerHTML = '<div class="vide">Start "Watch" in Vigie to reveal the domains this device contacts.</div>';
           return;
         }
-        var doms = (j.hotes && j.hotes[IP]) || [];
+        var doms = (j.hotes && (j.hotes[IP] || (HOTE && j.hotes[HOTE]))) || [];
         if(!doms.length){
           box.innerHTML = '<div class="vide">Monitoring… no domain seen yet for this device.</div>';
           return;
