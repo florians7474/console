@@ -15,12 +15,13 @@ The project also serves as a hands-on sandbox for learning offensive security. T
 | Tile | Role | Status |
 |------|------|--------|
 | **Pwnagotchi** | Passive Wi-Fi handshake capture | ✅ Working |
-| **Raton** | Offline WPA cracking on your own captures | 🚧 Planned |
-| **Bjorn** | Network reconnaissance and targeted attacks | 🚧 Planned |
+| **Bjorn** | Network reconnaissance and targeted attacks | ✅ Working |
+| **Raton** | Offline WPA cracking on your own captures | ✅ Working |
+| **Connexion** | Join a whitelisted network | 🚧 In progress |
 | **Vigie** | Network monitor (connected devices, contacted domains) | 🚧 Planned |
 | **Carte** | Network mapping (wardriving) | 🚧 Planned |
 
-For now only **Pwnagotchi** is operational: automatic installation, control from the tile (starting and stopping the services), and a live display of its face inside the interface.
+**Pwnagotchi**, **Bjorn** and **Raton** are operational: automatic installation, control from the tile, and a live view inside the interface. Raton runs a 9-stage escalation (factory keys, ESSID profiling, known cracked keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-step handoff to GPU cracking.
 
 ## Legal scope
 
@@ -32,7 +33,8 @@ Only use this tool on networks you own or have written permission to test. Any o
 
 - Raspberry Pi 5
 - 3.5" touchscreen (Waveshare 480x320 reference)
-- USB Wi-Fi adapter with monitor mode (tested with an Alfa AWUS036ACH, Realtek RTL8812AU chipset)
+- USB Wi-Fi adapter with monitor mode (tested with an Alfa AWUS036AXM, MediaTek MT7921AU chipset)
+- Optional: VK-162 USB GPS module (for the upcoming Carte / wardriving module)
 - microSD card, 32 GB or more, Raspberry Pi OS 64-bit (desktop)
 
 The Pi 5 built-in Wi-Fi does not support monitor mode, so a compatible USB adapter is required. The interface is detected automatically, no adapter name is hardcoded.
@@ -45,7 +47,7 @@ A single command on a freshly flashed Pi:
     cd fennec
     ./install.sh
 
-The script is idempotent and adapts to any user. It installs the system packages, sets up Pwnagotchi in an isolated environment, compiles pwngrid, generates a random password for bettercap, and configures the services. No sensitive data is stored in the repository.
+The script is idempotent and adapts to any user. It installs the system packages, sets up Pwnagotchi in an isolated environment, compiles pwngrid, builds routerkeygen-cli, installs the Raton dependencies (John, hcxtools, wordlists), generates a random password for bettercap, and configures the services. No sensitive data is stored in the repository.
 
 ## Usage
 
@@ -58,8 +60,9 @@ Click a tile to activate the matching module.
 ## Architecture
 
 - **Fennec**: Flask app that drives the modules without modifying them (port 5000)
-- **Pwnagotchi**: jayofelony fork in an isolated venv, driven by Fennec through systemd
-- Three services orchestrated in order: bettercap, then pwngrid-peer, then pwnagotchi
+- **Pwnagotchi**: jayofelony fork in an isolated venv, driven through systemd
+- **Bjorn**: infinition/Bjorn, driven through systemd, live console in the tile
+- **Raton**: in-house WPA cracking engine (aircrack-ng, CPU), staged escalation, GPU export
 - Automatic detection of the monitor-mode Wi-Fi adapter at launch
 
 ## Roadmap
@@ -67,8 +70,8 @@ Click a tile to activate the matching module.
 - [x] Fennec launcher and tile interface
 - [x] Pwnagotchi module (install, control, display)
 - [x] One-command installer
-- [ ] Raton module (WPA cracking)
-- [ ] Bjorn module
-- [ ] Vigie module
-- [ ] Carte module
-
+- [x] Bjorn module (install, control, live console)
+- [x] Raton module (WPA cracking, 9-stage escalation, GPU export)
+- [ ] Connexion tile (real nmcli join/disconnect)
+- [ ] Vigie module (real network monitoring)
+- [ ] Carte module (wardriving map)

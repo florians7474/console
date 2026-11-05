@@ -39,8 +39,9 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 |--------|------|--------|
 | Pwnagotchi | Handshake capture (jayofelony fork) | Done (install + control + head display) |
 | Bjorn | LAN scan/attack (infinition/Bjorn) | Done (install + control + live console) |
-| Raton | Offline WPA cracking (custom) | Engine done, intelligence to build |
-| Vigie | Network monitor (own devices only) | To do |
+| Raton | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
+| Connexion | Join a whitelisted network (Wi-Fi lock step 2) | Stub only (stores target in memory, no real nmcli yet) |
+| Vigie | Network monitor (own devices only) | Mockup (simulated devices, not real yet) |
 | Carte | Wardriving map (WiGLE-style) | To do |
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
@@ -54,7 +55,8 @@ Local cracking = aircrack-ng (stable on ARM, CPU). hashcat is NOT used locally
 export only. Raton is the smart orchestrator.
 
 ### Pi constraints (hard rules)
-- Everything in flux (pipes), no large wordlist written to the SD card.
+- Everything in flux (pipes) or in RAM (/dev/shm), no large wordlist written
+  to the SD card.
 - Only tiny files on disk: the box-profile knowledge base and the run log.
 - Everything else stays in RAM.
 
@@ -66,76 +68,83 @@ promises to crack long random WPA2.
 ### Intelligence = knowledge base (not self-learning)
 The intelligence comes from external knowledge about how boxes and humans make
 weak keys, not from Raton's own (rare) successes. At launch Raton reads the
-BSSID (OUI -> vendor) and the ESSID, queries a local box-profile base, and
+BSSID (OUI -> vendor) and the ESSID, queries the local box-profile base, and
 derives a targeted plan. Key point: you cannot deduce password length/shape
 from the hash (PBKDF2 destroys it) — the only possible narrowing comes from
 knowing the target.
 
-Sources to integrate:
-- Box-profile base: schema inspired by Airbash / crackdefault.sh (BSSID/ESSID
-  -> vulnerable model -> factory-key algo) + routerkeygen-cli (45 vendors,
-  already compiled in /usr/local/bin/routerkeygen-cli)
-- ESSID profiling: hcxtools (hcxeiutool / hcxessid.rule) — extract words from a
-  custom network name, mutate with John
-- Real cracked keys: WPA-Sec (dwpa, Alex Stanev) + SecLists WiFi-WPA
-  probable-v2-wpa-top4800 (tiny, WPA-specific)
-- Rules: lightweight best64 only (OneRule too heavy for the Pi CPU)
+Sources now integrated:
+- Box-profile base: profils_box.json (prefix ESSID -> vendor/model/algo),
+  routed to routerkeygen-cli (compiled in /usr/local/bin/routerkeygen-cli).
+  An ESSID flagged "ignore" (e.g. community hotspot) skips the factory stage.
+- ESSID profiling: raton_essid_gen.py mutates words extracted from a custom
+  network name (case, leet, suffixes, name+digits), capped at 100k, written to
+  /dev/shm so aircrack keeps a real counter and progress bar.
+- Real cracked keys: SecLists probable-v2-wpa-top4800 (tiny, WPA-specific).
+- Rules: John default --rules on the 10k list (OneRule too heavy for the Pi CPU).
 
-### Final stage plan (escalation, stops as soon as a key falls)
-1. Targeted factory keys (box-profile base + routerkeygen)  [NEW]
-2. ESSID profiling (custom-name words + John rules; skipped if generic)  [NEW]
-3. Real cracked keys (WPA-Sec + probable-wpa-top4800)  [NEW]
-4. Birth dates (DDMMYYYY / YYYYMMDD)  [exists]
-5. 10k common passwords  [exists]
-6. John incremental, random, 1h cap  [adjust existing]
-7. rockyou random read, 1h cap  [adjust existing]
+### Stage plan (escalation, stops as soon as a key falls)
+9 stages, in order:
+1. Factory default keys (profils_box.json + routerkeygen)
+2. ESSID profiling (custom-name words + mutations; skipped if the name is generic)
+3. Real cracked keys (probable-wpa-top4800)
+4. Birth dates (DDMMYYYY / YYYYMMDD)
+5. 10k common passwords
+6. Keyboard patterns
+7. 10k common + John mutation rules
+8. John incremental, 1h cap
+9. rockyou random (shuf), 1h cap
 
-Stages 6 and 7 are long "deep" passes (big-attempt feel, like Pwnagotchi/Bjorn)
-with a TIME gauge (0% -> 100% over 1h, hard stop). Short stages keep the
-animated "streaming" bar.
+Stages 8 and 9 are long "deep" passes with a TIME gauge (0% -> 100% over 1h,
+hard stop via a watchdog thread). Short stages show the key counter + bar;
+the time stages show mm:ss / 60:00 and the live candidate, not a key count.
 
-### Already built stages (keep, just reorder)
-factory keys (routerkeygen), common passwords, keyboard patterns, dates,
-dictionary+rules (John: john --stdout --rules | aircrack-ng -w -), rockyou.
+Length filter: every stage feeds aircrack only candidates of 8..63 chars
+(WPA minimum), via awk on the pipe or a filtered /dev/shm copy, so no invalid
+short candidate is ever shown or tested.
 
 ### Already done on Raton
-- Robustness score: stage where the box falls = its grade (Critical / Very weak
-  / Weak / Robust). _score_robustesse() in raton_engine.py, shown on result.
+- 9-stage escalation built, reordered, and tested live on a real Bbox.
+- Robustness score recalibrated for the 9 stages: stage where the box falls =
+  its grade (Critical / Very weak / Weak / Moderate / Robust).
+  _score_robustesse() in raton_engine.py, shown on result.
 - Auto key write: a cracked key is written back into the whitelist by BSSID
   (route /cassage/etat in app.py).
 - GPU export: /cassage/export/<bssid> converts the .pcap to .hc22000
   (hcxpcapngtool) and returns the hashcat command; "GPU" button -> cassage_gpu.html.
+- Robust stdout reading (errors="replace") so a non-UTF8 byte from aircrack no
+  longer freezes a stage.
+- install.sh now folds all Raton deps (routerkeygen build, hcxtools, John,
+  wordlists: 10k-common, probable-wpa-top4800, rockyou).
 
 ### Work left on Raton
-1. Build the box-profile base (the intelligence socle) + ESSID profiling stage
-   + real-cracked-keys stage
-2. Reorder ETAGES per the plan; add 1h time cap + time gauge to John & rockyou;
-   switch John to incremental and rockyou to random read
-3. Clearer GPU export — one-click handoff, so the user has nothing to copy:
-   - a download button for the already-generated .hc22000 file (no more
-     copy-pasting the hash)
-   - a ready command pointing at that file + a known wordlist, e.g.
-     hashcat -m 22000 fennec_<box>.hc22000 rockyou.txt -r best64.rule
-   - optionally a one-click script (crack.sh / crack.bat) that fetches the
-     wordlist if needed and launches hashcat, so there is zero manual step
-4. Fold Raton's install into install.sh (routerkeygen, hcxtools, John, wordlists)
+- Clearer GPU export — one-click handoff, so the user has nothing to copy:
+  - a download button for the already-generated .hc22000 file
+  - a ready command pointing at that file + a known wordlist, e.g.
+    hashcat -m 22000 fennec_<box>.hc22000 rockyou.txt -r best64.rule
+  - optionally a one-click script (crack.sh / crack.bat) that fetches the
+    wordlist if needed and launches hashcat, so there is zero manual step
 
 ## Install (showcase)
 One command on a fresh Pi: git clone the repo, then ./install.sh (idempotent,
 adapts to any user/path; generates a random bettercap password; nothing
-sensitive in the repo).
+sensitive in the repo). Installs Fennec, Pwnagotchi, Bjorn deps, and all Raton
+deps (routerkeygen, hcxtools, John, wordlists).
+Note: on Raspberry Pi OS Trixie, routerkeygen's qmake may default to Qt6;
+if the CLI build fails on a fresh Pi, force Qt5 (qmake -qt5).
 
 ## Dev loop
-Claude cannot push from its session (missing GitHub rights). Florian edits on
-the Pi and pushes. Editing any project file: nano ~/console/<file>.
+Edited directly on the Pi and pushed from there.
+Editing any project file: nano ~/console/<file>.
 
 ## Other work left (outside Raton)
-- Wi-Fi lock step 2: real Connexion tile via nmcli on wlan0 (connect/disconnect,
-  real state, refuse if no key and point to Raton)
+- Wi-Fi lock step 2: make the Connexion tile real via nmcli on wlan0
+  (connect/disconnect, real state, refuse if no key and point to Raton).
+  Currently a stub that only stores the target in memory.
 - Wi-Fi lock step 3: Bjorn start gate (ethernet allowed; on Wi-Fi the connected
   BSSID must be in the whitelist)
-- Fold Bjorn install into install.sh; update README (Bjorn 🚧 -> ✅)
-- Modules Vigie and Carte
+- Vigie: replace the simulated device list with real monitoring
+- Carte: build the wardriving map (uses the VK-162 GPS)
 
 ## Known issues
 - Flask runs in debug (debug=True), leaves 2 processes on :5000 ("Address
