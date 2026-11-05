@@ -91,6 +91,14 @@ if [ ! -d "$USER_HOME/Bjorn" ]; then
     git clone https://github.com/infinition/Bjorn.git "$USER_HOME/Bjorn"
 fi
 
+# Patch serveur web Bjorn : garder le port 8000 et autoriser la réutilisation
+# d'adresse. Sans ça, un Stop/Start laisse le port en TIME_WAIT, Bjorn saute
+# sur 8001 et la page devient injoignable depuis la tuile Fennec.
+if ! grep -q "allow_reuse_address = True" "$USER_HOME/Bjorn/webapp.py"; then
+    sed -i '/^import socketserver$/a socketserver.TCPServer.allow_reuse_address = True' "$USER_HOME/Bjorn/webapp.py"
+fi
+sed -i 's/^\( *\)self.port += 1/\1__import__("time").sleep(2)/' "$USER_HOME/Bjorn/webapp.py"
+
 # venv dédié + dépendances Python
 if [ ! -d "$USER_HOME/bjorn-venv" ]; then
     python3 -m venv "$USER_HOME/bjorn-venv"
