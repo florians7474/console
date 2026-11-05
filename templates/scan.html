@@ -37,6 +37,8 @@
       font-size:20px; font-weight:700; width:34px; height:34px; cursor:pointer; line-height:1;
     }
     .deja { color:#2ea043; font-size:18px; width:34px; text-align:center; }
+    .pied { flex:0 0 auto; text-align:center; padding:4px 0 8px; }
+    .pied a { color:#8b949e; font-size:11px; text-decoration:none; }
   </style>
 </head>
 <body>
@@ -71,6 +73,10 @@
       {% endif %}
     </div>
     {% endfor %}
+  </div>
+
+  <div class="pied">
+    <a href="/liste/reset?source={{ source }}" onclick="return confirm('Clear everything?')">Clear all</a>
   </div>
 
   <script>

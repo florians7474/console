@@ -423,6 +423,9 @@ def liste_retirer(bssid):
 def liste_reset():
     sauver_liste([])
     etat["reseau"] = None
+    source = request.args.get("source")
+    if source:
+        return redirect(url_for("scan", source=source))
     return redirect(url_for("liste"))
 
 @app.route("/scan")
