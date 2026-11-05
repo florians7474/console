@@ -32,6 +32,8 @@
       border:none; border-radius:8px; background:#2ea043; color:#fff; text-decoration:none;
       font-size:13px; font-weight:600; padding:8px 14px; white-space:nowrap;
     }
+    .tester.off { background:#30363d; color:#6e7681; cursor:default; }
+    .rbssid .nohs { color:#6e7681; }
     .exporter {
       border:1px solid #f0883e; border-radius:8px; background:none; color:#f0883e;
       text-decoration:none; font-size:13px; font-weight:600; padding:7px 12px; white-space:nowrap;
@@ -54,11 +56,15 @@
     <div class="ligne {{ '' if r.bssid in deja else 'verrou' }}">
       <div class="infos">
         <div class="rnom">{{ r.nom }}</div>
-        <div class="rbssid">{{ r.bssid }}</div>
+        <div class="rbssid">{{ r.bssid }}{% if r.bssid in deja and not r.handshake %} <span class="nohs">· no handshake</span>{% endif %}</div>
       </div>
       {% if r.bssid in deja %}
-        <a class="tester" href="/cassage/tester/{{ r.bssid }}">Test</a>
-        <a class="exporter" href="/cassage/gpu/{{ r.bssid }}">GPU</a>
+        {% if r.handshake %}
+          <a class="tester" href="/cassage/tester/{{ r.bssid }}">Test</a>
+          <a class="exporter" href="/cassage/gpu/{{ r.bssid }}">GPU</a>
+        {% else %}
+          <span class="tester off" title="No usable handshake yet">Test</span>
+        {% endif %}
       {% else %}
         <span class="cadenas">
           <svg viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

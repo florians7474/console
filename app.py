@@ -157,6 +157,23 @@ def accueil():
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
 
+_hs_cache = {}
+
+def capture_a_handshake(fichier):
+    """Présence d'un handshake dans une capture, avec cache par fichier (mtime+taille)."""
+    chemin = os.path.join(HANDSHAKES_DIR, fichier)
+    try:
+        st = os.stat(chemin)
+        cle = (st.st_mtime, st.st_size)
+    except OSError:
+        return False
+    hit = _hs_cache.get(chemin)
+    if hit and hit[0] == cle:
+        return hit[1]
+    val = raton_engine.a_un_handshake(chemin)
+    _hs_cache[chemin] = (cle, val)
+    return val
+
 def lire_handshakes():
     captures = {}
     try:
@@ -216,7 +233,12 @@ def mode(nom):
             if capture:
                 return render_template("cassage_resultat.html", c=capture)
         deja = {r["bssid"] for r in charger_liste()}
-        return render_template("cassage.html", captures=lire_handshakes(), deja=deja)
+        captures = lire_handshakes()
+        for cap in captures:
+            # On ne teste la présence du handshake que pour les réseaux autorisés
+            # (les seuls qui affichent un bouton Test), pour éviter des scans inutiles.
+            cap["handshake"] = cap["bssid"] in deja and capture_a_handshake(cap["fichier"])
+        return render_template("cassage.html", captures=captures, deja=deja)
 
     if nom == "pwnagotchi":
         actif = est_actif("pwnagotchi")

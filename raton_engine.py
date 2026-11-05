@@ -181,23 +181,20 @@ ETAGES = [
     {"nom": "rockyou random (1h)", "type": "temps", "source": "rockyou_shuf"},
 ]
 
-def a_un_handshake(pcap, bssid):
-    """True si la capture contient un handshake exploitable pour ce BSSID."""
+def a_un_handshake(pcap, bssid=None):
+    """True si la capture contient au moins un handshake WPA."""
     try:
-        with open("/tmp/raton_probe.txt", "w") as f:
-            f.write("probe12345\n")
         r = subprocess.run(
-            ["aircrack-ng", "-w", "/tmp/raton_probe.txt", "-b", bssid, pcap],
+            ["aircrack-ng", pcap],
             capture_output=True, text=True, timeout=30,
+            stdin=subprocess.DEVNULL,
         )
     except Exception:
         return True   # en cas de doute, on laisse Raton tourner
-    bas = ((r.stdout or "") + (r.stderr or "")).lower()
-    if "no valid" in bas and "handshake" in bas:
-        return False
-    if "no matching network" in bas:
-        return False
-    return True
+    for m in re.finditer(r"WPA \((\d+)\s+handshake", r.stdout or ""):
+        if int(m.group(1)) > 0:
+            return True
+    return False
 
 
 def _run(pcap, bssid, reseau, wordlist):
