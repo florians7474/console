@@ -75,7 +75,8 @@ sudo cp "$SYS/fennec-bettercap" /usr/local/bin/fennec-bettercap
 sudo cp "$SYS/fennec-pwngrid"   /usr/local/bin/fennec-pwngrid
 sudo cp "$SYS/fennec-clear-handshakes" /usr/local/bin/fennec-clear-handshakes
 sudo cp "$SYS/fennec-netscan" /usr/local/bin/fennec-netscan
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan
+sudo cp "$SYS/fennec-monitor" /usr/local/bin/fennec-monitor
+sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor
 
 # --- 7. Services systemd (avec substitution du venv) ---
 echo "==> Installation des services systemd..."

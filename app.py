@@ -3,6 +3,7 @@ import re
 import json
 import socket
 import raton_engine
+import vigie_monitor
 from flask import Flask, render_template, redirect, url_for, abort, request, jsonify
 
 app = Flask(__name__)
@@ -301,6 +302,9 @@ def accueil():
     if mode_actif == "cassage" and not raton_engine.etat_cassage.get("actif"):
         mode_actif = None
         etat["mode_actif"] = None
+    if mode_actif == "vigie" and not vigie_monitor.etat_monitor.get("actif"):
+        mode_actif = None
+        etat["mode_actif"] = None
     return render_template("home.html", actif=mode_actif, connexion=etat_connexion())
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
@@ -412,7 +416,11 @@ def mode(nom):
 def basculer(nom):
     if nom not in MODES:
         return redirect(url_for("accueil"))
+    if vigie_monitor.etat_monitor["actif"]:   # un autre mode démarre : couper le monitoring Vigie
+        vigie_monitor.arreter()
     actuel = etat["mode_actif"]
+    if actuel == "vigie":
+        actuel = None
     if actuel == nom:
         arreter(nom)
         etat["mode_actif"] = None
@@ -431,11 +439,13 @@ def cassage_tester(bssid):
     capture = next((c for c in lire_handshakes() if c["bssid"] == bssid), None)
     if not capture:
         return redirect(url_for("mode", nom="cassage"))
-    # Raton prend la main : couper les modes qui tournent (Pwnagotchi / Bjorn)
+    # Raton prend la main : couper les modes qui tournent (Pwnagotchi / Bjorn / Vigie)
     if est_actif("pwnagotchi"):
         arreter("pwnagotchi")
     if est_actif("bjorn"):
         arreter("bjorn")
+    if vigie_monitor.etat_monitor["actif"]:
+        vigie_monitor.arreter()
     etat["mode_actif"] = "cassage"
     etat["reseau"] = capture["nom"]
     pcap = os.path.join(HANDSHAKES_DIR, capture["fichier"])
@@ -570,6 +580,31 @@ def vigie_ports(ip):
     return jsonify({"ports": ports,
                     "type": deviner_type(ports, d.get("vendor")),
                     "hote": nom_hote(ip)})
+
+@app.route("/vigie/monitor/start")
+def vigie_monitor_start():
+    # Le monitoring prend la main : couper les autres modes actifs.
+    if etat["mode_actif"] in SERVICES:
+        arreter(etat["mode_actif"])
+    if raton_engine.etat_cassage.get("actif"):
+        raton_engine.arreter()
+    ip = ip_locale()
+    prefixe = ".".join(ip.split(".")[:3]) + "." if ip else None
+    ok = vigie_monitor.demarrer(prefixe)
+    if ok:
+        etat["mode_actif"] = "vigie"
+    return jsonify({"actif": vigie_monitor.etat_monitor["actif"]})
+
+@app.route("/vigie/monitor/stop")
+def vigie_monitor_stop():
+    vigie_monitor.arreter()
+    if etat["mode_actif"] == "vigie":
+        etat["mode_actif"] = None
+    return jsonify({"actif": False})
+
+@app.route("/vigie/monitor/data")
+def vigie_monitor_data():
+    return jsonify(vigie_monitor.instantane())
 
 # ---------- Whitelist (routes) ----------
 

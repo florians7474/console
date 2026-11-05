@@ -66,6 +66,11 @@
     <div id="ports">
       <div class="scanning"><div class="radar"></div><div class="txt">Scanning ports…</div></div>
     </div>
+
+    <div class="sect" style="margin-top:14px">Traffic — contacted domains</div>
+    <div id="traffic">
+      <div class="vide">Start "Watch" in Vigie to reveal the domains this device contacts.</div>
+    </div>
   </div>
 
   <script>
@@ -93,6 +98,30 @@
       document.getElementById('type').textContent = '';
       document.getElementById('ports').innerHTML = '<div class="vide">Port scan failed.</div>';
     });
+
+    // Trafic : domaines contactés par cet appareil (si le monitoring tourne).
+    function pollTraffic(){
+      fetch('/vigie/monitor/data').then(function(r){ return r.json(); }).then(function(j){
+        var box = document.getElementById('traffic');
+        if(!j.actif){
+          box.innerHTML = '<div class="vide">Start "Watch" in Vigie to reveal the domains this device contacts.</div>';
+          return;
+        }
+        var doms = (j.hotes && j.hotes[IP]) || [];
+        if(!doms.length){
+          box.innerHTML = '<div class="vide">Monitoring… no domain seen yet for this device.</div>';
+          return;
+        }
+        box.innerHTML = '';
+        doms.forEach(function(dom){
+          var row = document.createElement('div'); row.className = 'port';
+          var s = document.createElement('span'); s.className = 'svc'; s.textContent = dom;
+          row.appendChild(s); box.appendChild(row);
+        });
+      }).catch(function(){});
+    }
+    pollTraffic();
+    setInterval(pollTraffic, 2500);
   </script>
 </body>
 </html>
