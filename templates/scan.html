@@ -57,7 +57,7 @@
         <div class="rnom">{{ r.nom }}</div>
         <div class="rbssid">{{ r.bssid }}</div>
       </div>
-      <span class="sig">{{ r.signal }} dBm</span>
+      {% if r.signal is defined and r.signal is not none %}<span class="sig">{{ r.signal }} dBm</span>{% endif %}
       {% if r.bssid in deja %}
         <span class="deja" title="Already allowed">&check;</span>
       {% else %}
