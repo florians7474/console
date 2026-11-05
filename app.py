@@ -148,7 +148,12 @@ def pwna_ui():
 
 @app.route("/")
 def accueil():
-    return render_template("home.html", actif=etat["mode_actif"], reseau=etat["reseau"])
+    mode_actif = etat["mode_actif"]
+    # Raton tourne dans un thread, pas un service : la pastille suit l'état réel du moteur.
+    if mode_actif == "cassage" and not raton_engine.etat_cassage.get("actif"):
+        mode_actif = None
+        etat["mode_actif"] = None
+    return render_template("home.html", actif=mode_actif, reseau=etat["reseau"])
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
 

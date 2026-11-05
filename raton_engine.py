@@ -29,6 +29,7 @@ etat_cassage = {
     "journal": [],
     "enregistree": False,
     "robustesse": None,
+    "sans_handshake": False,
 }
 
 _verrou = threading.Lock()
@@ -48,6 +49,7 @@ def _reset(bssid, reseau):
         "trouve": False, "cle": None, "fini": False, "message": "",
         "journal": [],
         "enregistree": False,
+        "sans_handshake": False,
     })
 
 
@@ -179,10 +181,37 @@ ETAGES = [
     {"nom": "rockyou random (1h)", "type": "temps", "source": "rockyou_shuf"},
 ]
 
+def a_un_handshake(pcap, bssid):
+    """True si la capture contient un handshake exploitable pour ce BSSID."""
+    try:
+        with open("/tmp/raton_probe.txt", "w") as f:
+            f.write("probe12345\n")
+        r = subprocess.run(
+            ["aircrack-ng", "-w", "/tmp/raton_probe.txt", "-b", bssid, pcap],
+            capture_output=True, text=True, timeout=30,
+        )
+    except Exception:
+        return True   # en cas de doute, on laisse Raton tourner
+    bas = ((r.stdout or "") + (r.stderr or "")).lower()
+    if "no valid" in bas and "handshake" in bas:
+        return False
+    if "no matching network" in bas:
+        return False
+    return True
+
+
 def _run(pcap, bssid, reseau, wordlist):
     global _proc
     keyfile = "/tmp/raton_found.key"
     etat_cassage["etape_total"] = len(ETAGES)
+
+    if not a_un_handshake(pcap, bssid):
+        with _verrou:
+            etat_cassage["actif"] = False
+            etat_cassage["fini"] = True
+            etat_cassage["sans_handshake"] = True
+            etat_cassage["message"] = "No handshake"
+        return
 
     for i, etage in enumerate(ETAGES, start=1):
         if not etat_cassage["actif"]:

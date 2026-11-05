@@ -45,6 +45,7 @@
     .verdict { font-size:20px; font-weight:700; margin-bottom:10px; }
     .faible { color:#da3633; }
     .solide { color:#2ea043; }
+    .neutre { color:#8b949e; }
     .detail { font-size:13px; color:#c9d1d9; line-height:1.6; max-width:360px; }
     .detail .cle { font-family:ui-monospace,Consolas,monospace; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:2px 8px; }
     .stopbtn { display:block; margin:14px auto 0; border:1px solid #da3633; color:#da3633;
@@ -55,7 +56,7 @@
 </head>
 <body>
   <div class="barre">
-    <a class="retour" href="/mode/cassage">&larr;</a>
+    <a class="retour" href="/">&larr;</a>
     <div class="titre">Cracking</div>
   </div>
 
@@ -131,7 +132,13 @@
           var d = document.getElementById('detail');
           fin.classList.remove('hide');
           var rob = e.robustesse || {};
-          if(e.trouve){
+          if(e.sans_handshake){
+            v.textContent = 'No usable handshake';
+            v.className = 'verdict neutre';
+            d.innerHTML =
+              'This capture has no complete handshake, so there was nothing to test.' +
+              '<br><br>Let Pwnagotchi keep running to capture a full handshake for this network, then run the test again.';
+          } else if(e.trouve){
             v.textContent = rob.label || 'Weak key';
             v.className = 'verdict faible';
             d.innerHTML =
