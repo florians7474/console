@@ -40,6 +40,25 @@
     .deja { color:#2ea043; font-size:18px; width:34px; text-align:center; }
     .pied { flex:0 0 auto; text-align:center; padding:4px 0 8px; }
     .pied a { color:#8b949e; font-size:11px; text-decoration:none; }
+    .modal {
+      display:none; position:absolute; top:0; left:0; width:480px; height:320px; background:rgba(0,0,0,.6);
+      z-index:10; align-items:center; justify-content:center;
+    }
+    .modal.on { display:flex; }
+    .carte {
+      width:320px; background:#161b22; border:1px solid #30363d; border-radius:12px;
+      padding:18px; display:flex; flex-direction:column; gap:14px;
+    }
+    .carte h3 { font-size:15px; font-weight:600; }
+    .carte .lignes { display:flex; gap:8px; justify-content:flex-end; }
+    .carte .annuler {
+      border:1px solid #30363d; background:none; color:#e6edf3; border-radius:8px;
+      padding:9px 14px; font-size:13px; cursor:pointer;
+    }
+    .carte .valider {
+      border:none; background:#da3633; color:#fff; border-radius:8px;
+      padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer;
+    }
   </style>
 </head>
 <body>
@@ -78,10 +97,25 @@
   </div>
 
   <div class="pied">
-    <a href="/scan/vider/{{ source }}" onclick="return confirm('Clear everything?')">Clear all</a>
+    <a href="#" onclick="ouvrirConfirm('/scan/vider/{{ source }}'); return false;">Clear all</a>
+  </div>
+
+  <div class="modal" id="modalConfirm">
+    <div class="carte">
+      <h3>Clear everything?</h3>
+      <div class="lignes">
+        <button type="button" class="annuler" onclick="fermerConfirm()">Cancel</button>
+        <button type="button" class="valider" onclick="validerConfirm()">Clear all</button>
+      </div>
+    </div>
   </div>
 
   <script>
+    var confirmUrl = null;
+    function ouvrirConfirm(url){ confirmUrl = url; document.getElementById('modalConfirm').classList.add('on'); }
+    function fermerConfirm(){ document.getElementById('modalConfirm').classList.remove('on'); }
+    function validerConfirm(){ if(confirmUrl){ window.location.href = confirmUrl; } }
+
     (function(){
       var liste = document.querySelector('.liste');
       if(!liste) return;

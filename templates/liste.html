@@ -77,6 +77,7 @@
       border:none; background:#2ea043; color:#fff; border-radius:8px;
       padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer;
     }
+    .carte .danger { background:#da3633; }
   </style>
 </head>
 <body>
@@ -114,7 +115,7 @@
   </form>
 
   <div class="pied">
-    <a href="/liste/reset" onclick="return confirm('Clear everything?')">Clear all</a>
+    <a href="#" onclick="ouvrirConfirm('/liste/reset'); return false;">Clear all</a>
   </div>
 
   <div class="modal" id="modalEdit">
@@ -131,7 +132,22 @@
     </form>
   </div>
 
+  <div class="modal" id="modalConfirm">
+    <div class="carte">
+      <h3>Clear everything?</h3>
+      <div class="lignes">
+        <button type="button" class="annuler" onclick="fermerConfirm()">Cancel</button>
+        <button type="button" class="valider danger" onclick="validerConfirm()">Clear all</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    var confirmUrl = null;
+    function ouvrirConfirm(url){ confirmUrl = url; document.getElementById('modalConfirm').classList.add('on'); }
+    function fermerConfirm(){ document.getElementById('modalConfirm').classList.remove('on'); }
+    function validerConfirm(){ if(confirmUrl){ window.location.href = confirmUrl; } }
+
     function ouvrirEdit(bssid, nom, cle){
       document.getElementById('editBssid').value = bssid;
       document.getElementById('editBssidLabel').textContent = bssid;
