@@ -17,6 +17,7 @@
     }
     .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
     .titre { font-size:16px; font-weight:600; flex:1; }
+    .scan-btn { border:1px solid #2ea043; color:#2ea043; text-decoration:none; border-radius:8px; padding:7px 12px; font-size:13px; font-weight:600; }
     .onglets { flex:0 0 auto; display:flex; background:#0d1117; border-bottom:1px solid #30363d; }
     .onglets a {
       flex:1; text-align:center; padding:10px 6px; font-size:12px; font-weight:600;
@@ -45,6 +46,7 @@
   <div class="barre">
     <a class="retour" href="/liste">&larr;</a>
     <div class="titre">Detected networks</div>
+    {% if source == 'direct' %}<a class="scan-btn" href="/scan?source=direct&rescan=1">Scan</a>{% endif %}
   </div>
 
   <div class="onglets">
@@ -76,7 +78,7 @@
   </div>
 
   <div class="pied">
-    <a href="/liste/reset?source={{ source }}" onclick="return confirm('Clear everything?')">Clear all</a>
+    <a href="/scan/vider/{{ source }}" onclick="return confirm('Clear everything?')">Clear all</a>
   </div>
 
   <script>

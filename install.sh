@@ -67,7 +67,8 @@ sudo sed "s/__BETTERCAP_PASS__/$BC_PASS/" "$SYS/pwnagotchi-auto.cap" \
 echo "==> Installation des scripts de lancement..."
 sudo cp "$SYS/fennec-bettercap" /usr/local/bin/fennec-bettercap
 sudo cp "$SYS/fennec-pwngrid"   /usr/local/bin/fennec-pwngrid
-sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid
+sudo cp "$SYS/fennec-clear-handshakes" /usr/local/bin/fennec-clear-handshakes
+sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes
 
 # --- 7. Services systemd (avec substitution du venv) ---
 echo "==> Installation des services systemd..."

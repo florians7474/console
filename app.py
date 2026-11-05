@@ -9,6 +9,7 @@ app = Flask(__name__)
 BASE = os.path.dirname(os.path.abspath(__file__))
 FICHIER_LISTE = os.path.join(BASE, "liste_blanche.json")
 FICHIER_MIENS = os.path.join(BASE, "mes_appareils.json")
+FICHIER_SCAN  = os.path.join(BASE, "scan_direct.json")
 
 etat = {"mode_actif": None, "reseau": None}
 
@@ -66,6 +67,12 @@ def charger_miens():
 
 def sauver_miens(ids):
     _sauver(FICHIER_MIENS, ids)
+
+def charger_scan():
+    return _charger(FICHIER_SCAN)   # dernier scan direct mémorisé
+
+def sauver_scan(reseaux):
+    _sauver(FICHIER_SCAN, reseaux)
 
 # ---------- Modes ----------
 
@@ -435,9 +442,26 @@ def scan():
         reseaux = lire_handshakes()
     else:
         source = "direct"
-        reseaux = scan_direct()
+        if request.args.get("rescan"):
+            sauver_scan(scan_direct())
+            return redirect(url_for("scan", source="direct"))
+        reseaux = charger_scan()
     deja = {r["bssid"] for r in charger_liste()}
     return render_template("scan.html", reseaux=reseaux, deja=deja, source=source)
+
+@app.route("/scan/vider/<source>")
+def scan_vider(source):
+    if source == "pwna":
+        try:
+            subprocess.run(
+                ["sudo", "-n", "/usr/local/bin/fennec-clear-handshakes"],
+                check=True, capture_output=True, timeout=20,
+            )
+        except Exception:
+            pass
+        return redirect(url_for("scan", source="pwna"))
+    sauver_scan([])
+    return redirect(url_for("scan", source="direct"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

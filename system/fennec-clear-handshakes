@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Supprime toutes les captures de handshakes de Pwnagotchi.
+rm -f /etc/pwnagotchi/handshakes/*.pcap
