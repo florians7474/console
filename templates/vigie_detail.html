@@ -175,7 +175,19 @@
       var body = new URLSearchParams(); body.set('nom', nom);
       fetch('/vigie/nom/' + encodeURIComponent(MAC), { method:'POST', body: body })
         .then(function(r){ return r.json(); })
-        .then(function(j){ document.getElementById('titre').textContent = j.nom || VENDOR || 'Unknown device'; fermerNom(); })
+        .then(function(j){
+          var newNom = j.nom || VENDOR || 'Unknown device';
+          document.getElementById('titre').textContent = newNom;
+          // met à jour le cache de la liste pour que le nom apparaisse au retour, sans rescan
+          try {
+            var c = JSON.parse(sessionStorage.getItem('vigie_devices') || '[]');
+            c.forEach(function(d){
+              if(d.mac && MAC && d.mac.toUpperCase() === MAC.toUpperCase()){ d.nom = newNom; }
+            });
+            sessionStorage.setItem('vigie_devices', JSON.stringify(c));
+          } catch(e){}
+          fermerNom();
+        })
         .catch(function(){ fermerNom(); });
     }
   </script>
