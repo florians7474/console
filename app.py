@@ -559,10 +559,17 @@ def vigie_appareil(ip):
         "type": "device", "pi": False, "routeur": False,
         "mien": False, "inconnu": True,
     }
+    return render_template("vigie_detail.html", d=d)
+
+@app.route("/vigie/ports/<ip>")
+def vigie_ports(ip):
+    if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip):
+        return jsonify({"ports": [], "type": "Unknown", "hote": None})
+    d = _dernier_scan.get(ip) or {}
     ports = scan_ports(ip)
-    return render_template("vigie_detail.html", d=d, ports=ports,
-                           type_devine=deviner_type(ports, d.get("vendor")),
-                           hote=nom_hote(ip))
+    return jsonify({"ports": ports,
+                    "type": deviner_type(ports, d.get("vendor")),
+                    "hote": nom_hote(ip)})
 
 # ---------- Whitelist (routes) ----------
 

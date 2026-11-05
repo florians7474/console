@@ -82,6 +82,9 @@
   <script>
     var devices = [];
 
+    function sauver(){ try { sessionStorage.setItem('vigie_devices', JSON.stringify(devices)); } catch(e){} }
+    function charger(){ try { var v = sessionStorage.getItem('vigie_devices'); return v ? JSON.parse(v) : null; } catch(e){ return null; } }
+
     function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 
     function iconSvg(type){
@@ -140,6 +143,7 @@
       d.mien = mien;
       d.inconnu = !mien && !d.pi && !d.routeur;
       rendre();
+      sauver();
       fetch('/vigie/' + (mien ? 'mien' : 'pasmien') + '/' + encodeURIComponent(d.mac)).catch(function(){});
     }
 
@@ -151,13 +155,17 @@
       fetch('/vigie/data').then(function(r){ return r.json(); }).then(function(data){
         devices = data.appareils || [];
         rendre();
+        sauver();
       }).catch(function(){
         document.getElementById('liste').innerHTML = '<div class="vide">Scan failed.<br>Tap "Rescan" to try again.</div>';
         document.getElementById('bilan').textContent = '';
       }).finally(function(){ btn.disabled = false; });
     }
 
-    scanner();
+    // Au retour (depuis une fiche), on réaffiche le dernier scan mémorisé,
+    // sans relancer : c'est à l'utilisateur de cliquer « Rescan ».
+    var memo = charger();
+    if(memo){ devices = memo; rendre(); } else { scanner(); }
   </script>
 </body>
 </html>

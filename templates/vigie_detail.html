@@ -30,13 +30,25 @@
     .port .num { font-family:ui-monospace,Consolas,monospace; font-weight:700; color:#f0883e; min-width:52px; }
     .port .svc { font-size:13px; }
     .vide { color:#8b949e; font-size:12px; padding:8px 2px; }
+
+    .scanning { display:flex; flex-direction:column; align-items:center; gap:12px; padding:14px 0; }
+    .radar { width:72px; height:72px; border-radius:50%; position:relative;
+             background:
+               radial-gradient(circle, transparent 0 2px, #1b2b2e 2px 3px, transparent 3px) center/24px 24px,
+               #10191b;
+             border:1px solid #1d5663; overflow:hidden; }
+    .radar::after { content:""; position:absolute; inset:0; border-radius:50%;
+      background:conic-gradient(from 0deg, rgba(240,136,62,.55), rgba(240,136,62,0) 70%);
+      animation:sweep 1.3s linear infinite; }
+    @keyframes sweep { to { transform:rotate(360deg); } }
+    .scanning .txt { font-size:12px; color:#8b949e; }
   </style>
 </head>
 <body>
   <div class="barre">
     <a class="retour" href="/vigie">&larr;</a>
     <div class="titre">{{ d.nom }}</div>
-    <span class="type">{{ type_devine }}</span>
+    <span class="type" id="type">…</span>
   </div>
 
   <div class="corps">
@@ -44,20 +56,43 @@
       <div class="champ"><span class="k">IP</span><span class="v">{{ d.ip }}</span></div>
       {% if d.mac %}<div class="champ"><span class="k">MAC</span><span class="v">{{ d.mac }}</span></div>{% endif %}
       {% if d.vendor %}<div class="champ"><span class="k">Vendor</span><span class="v">{{ d.vendor }}</span></div>{% endif %}
-      {% if hote %}<div class="champ"><span class="k">Hostname</span><span class="v">{{ hote }}</span></div>{% endif %}
+      <div class="champ" id="champ-hote" style="display:none"><span class="k">Hostname</span><span class="v" id="hote"></span></div>
       <div class="champ"><span class="k">Status</span><span class="v">
         {%- if d.pi -%}This Pi{%- elif d.routeur -%}Router{%- elif d.mien -%}Mine{%- else -%}Unknown{%- endif -%}
       </span></div>
     </div>
 
-    <div class="sect">Open ports (top 100)</div>
-    {% if ports %}
-      {% for p in ports %}
-      <div class="port"><span class="num">{{ p.port }}</span><span class="svc">{{ p.service }}</span></div>
-      {% endfor %}
-    {% else %}
-      <div class="vide">No open port found in the top 100. The device may be firewalled, asleep, or expose nothing.</div>
-    {% endif %}
+    <div class="sect">Open ports (common)</div>
+    <div id="ports">
+      <div class="scanning"><div class="radar"></div><div class="txt">Scanning ports…</div></div>
+    </div>
   </div>
+
+  <script>
+    var IP = {{ d.ip|tojson }};
+    fetch('/vigie/ports/' + IP).then(function(r){ return r.json(); }).then(function(j){
+      var t = document.getElementById('type'); t.textContent = j.type || 'Unknown';
+      if(j.hote){
+        document.getElementById('hote').textContent = j.hote;
+        document.getElementById('champ-hote').style.display = '';
+      }
+      var box = document.getElementById('ports');
+      var ports = j.ports || [];
+      if(!ports.length){
+        box.innerHTML = '<div class="vide">No open port found. The device may be firewalled, asleep, or expose nothing.</div>';
+        return;
+      }
+      box.innerHTML = '';
+      ports.forEach(function(p){
+        var d = document.createElement('div'); d.className = 'port';
+        var n = document.createElement('span'); n.className = 'num'; n.textContent = p.port;
+        var s = document.createElement('span'); s.className = 'svc'; s.textContent = p.service;
+        d.appendChild(n); d.appendChild(s); box.appendChild(d);
+      });
+    }).catch(function(){
+      document.getElementById('type').textContent = '';
+      document.getElementById('ports').innerHTML = '<div class="vide">Port scan failed.</div>';
+    });
+  </script>
 </body>
 </html>
