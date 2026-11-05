@@ -246,6 +246,28 @@ def appareils_vigie():
 
 _dernier_scan = {}
 
+def arp_mac(ip):
+    """MAC d'une IP depuis le cache ARP (sans re-scanner), ou None."""
+    try:
+        r = subprocess.run(["ip", "neigh", "show", ip],
+                           capture_output=True, text=True, timeout=5)
+        m = re.search(r"lladdr ([0-9a-f:]{17})", r.stdout, re.I)
+        return m.group(1).upper() if m else None
+    except Exception:
+        return None
+
+def device_pour(ip):
+    """Construit la fiche d'un appareil pour une IP, même hors du dernier scan."""
+    mac = arp_mac(ip)
+    pi = (ip == ip_locale())
+    routeur = (ip == passerelle_ip())
+    mien = bool(mac) and mac in set(charger_miens())
+    nom = nom_perso(mac) or ("This Pi" if pi else ("Router" if routeur else "Unknown device"))
+    return {"ip": ip, "mac": mac, "vendor": None, "nom": nom,
+            "type": "pi" if pi else ("router" if routeur else "device"),
+            "pi": pi, "routeur": routeur, "mien": mien,
+            "inconnu": not (pi or routeur or mien)}
+
 def nom_hote(ip):
     """Reverse DNS de l'IP, ou None."""
     try:
@@ -642,11 +664,7 @@ def vigie_pasmien(mac):
 def vigie_appareil(ip):
     if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip):
         return redirect(url_for("vigie"))
-    d = _dernier_scan.get(ip) or {
-        "ip": ip, "mac": None, "vendor": None, "nom": ip,
-        "type": "device", "pi": False, "routeur": False,
-        "mien": False, "inconnu": True,
-    }
+    d = _dernier_scan.get(ip) or device_pour(ip)
     return render_template("vigie_detail.html", d=d)
 
 @app.route("/vigie/ports/<ip>")
@@ -690,7 +708,7 @@ def vigie_trafic(ip):
     if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip):
         return jsonify({"actif": False, "domaines": []})
     d = _dernier_scan.get(ip) or {}
-    mac = d.get("mac")
+    mac = d.get("mac") or arp_mac(ip)
     hote = (nom_hote(ip) or "").lower().rstrip(".")
     live = vigie_monitor.horodates([c for c in (ip, hote) if c])
     dom_ts = fusionner_trafic(mac, live)   # fusionne live + historique persistant
