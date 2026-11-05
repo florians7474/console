@@ -2,6 +2,7 @@ import os
 import re
 import json
 import time
+import atexit
 import socket
 import raton_engine
 import vigie_monitor
@@ -809,6 +810,10 @@ def scan_vider(source):
         return redirect(url_for("scan", source="pwna"))
     sauver_scan([])
     return redirect(url_for("scan", source="direct"))
+
+# À la fermeture de Fennec, couper bettercap pour ne pas laisser le réseau
+# sous ARP spoofing (sinon la connexion reste perturbée après l'arrêt).
+atexit.register(vigie_monitor.arreter)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

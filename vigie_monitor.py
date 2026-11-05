@@ -112,7 +112,8 @@ def demarrer(prefixe=None):
         _proc = subprocess.Popen(
             ["sudo", "-n", "/usr/local/bin/fennec-monitor"],
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, bufsize=1, start_new_session=True,
+            text=True, encoding="utf-8", errors="replace",
+            bufsize=1, start_new_session=True,
         )
     except Exception:
         _proc = None
