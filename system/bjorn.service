@@ -1,0 +1,15 @@
+[Unit]
+Description=Bjorn (module Fennec)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=__HOME__/Bjorn
+ExecStartPre=-/usr/bin/bash -c "fuser -k 8000/tcp 8001/tcp 2>/dev/null; sleep 1; true"
+ExecStart=__HOME__/bjorn-venv/bin/python3 __HOME__/Bjorn/Bjorn.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

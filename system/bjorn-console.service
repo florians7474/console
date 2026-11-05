@@ -1,0 +1,11 @@
+[Unit]
+Description=Bjorn web console feed (Fennec)
+After=bjorn.service
+BindsTo=bjorn.service
+
+[Service]
+ExecStart=/usr/local/bin/fennec-bjorn-console
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

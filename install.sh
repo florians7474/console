@@ -24,7 +24,7 @@ sudo apt install -y \
     git python3-venv python3-flask aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw \
-    john hcxtools qtbase5-dev qt5-qmake libssl-dev
+    john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev
     
 # --- 2. Environnement Python (venv) + Pwnagotchi ---
 if [ ! -d "$VENV" ]; then
@@ -82,6 +82,32 @@ echo "==> Mise en place des droits sudo pour Fennec..."
 sudo sed "s/__USER__/$USER_NAME/" "$SYS/fennec.sudoers" \
     | sudo tee /etc/sudoers.d/fennec > /dev/null
 sudo chmod 440 /etc/sudoers.d/fennec
+
+# --- Bjorn (scan/attaque LAN) ---
+echo "==> Installation de Bjorn..."
+
+# Code source (infinition/Bjorn)
+if [ ! -d "$USER_HOME/Bjorn" ]; then
+    git clone https://github.com/infinition/Bjorn.git "$USER_HOME/Bjorn"
+fi
+
+# venv dédié + dépendances Python
+if [ ! -d "$USER_HOME/bjorn-venv" ]; then
+    python3 -m venv "$USER_HOME/bjorn-venv"
+fi
+"$USER_HOME/bjorn-venv/bin/pip" install --prefer-binary -r "$USER_HOME/Bjorn/requirements.txt"
+
+# Script de la console web (chemin adapté à l'utilisateur)
+sudo sed "s#__HOME__#$USER_HOME#g" "$SYS/fennec-bjorn-console" \
+    | sudo tee /usr/local/bin/fennec-bjorn-console > /dev/null
+sudo chmod +x /usr/local/bin/fennec-bjorn-console
+
+# Services systemd Bjorn (chemin adapté)
+for svc in bjorn bjorn-console; do
+    sudo sed "s#__HOME__#$USER_HOME#g" "$SYS/$svc.service" \
+        | sudo tee "/etc/systemd/system/$svc.service" > /dev/null
+done
+sudo systemctl daemon-reload
 
 # --- 9. Raton : moteur de cassage WPA (routerkeygen + wordlists) ---
 echo "==> Mise en place de Raton (cassage WPA)..."
