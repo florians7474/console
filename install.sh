@@ -23,8 +23,9 @@ sudo apt update
 sudo apt install -y \
     git python3-venv python3-flask aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
-    liblgpio-dev swig libcap-dev iw
-
+    liblgpio-dev swig libcap-dev iw \
+    john hcxtools wordlists qtbase5-dev qt5-qmake libssl-dev
+    
 # --- 2. Environnement Python (venv) + Pwnagotchi ---
 if [ ! -d "$VENV" ]; then
     echo "==> Création du venv Python..."
@@ -81,6 +82,39 @@ echo "==> Mise en place des droits sudo pour Fennec..."
 sudo sed "s/__USER__/$USER_NAME/" "$SYS/fennec.sudoers" \
     | sudo tee /etc/sudoers.d/fennec > /dev/null
 sudo chmod 440 /etc/sudoers.d/fennec
+
+# --- 9. Raton : moteur de cassage WPA (routerkeygen + wordlists) ---
+echo "==> Mise en place de Raton (cassage WPA)..."
+
+# routerkeygen-cli (cles d'usine) : pas dans apt, compile depuis les sources
+if [ ! -f /usr/local/bin/routerkeygen-cli ]; then
+    echo "==> Compilation de routerkeygen-cli..."
+    if [ ! -d "$USER_HOME/routerkeygen-src" ]; then
+        git clone https://github.com/routerkeygen/routerkeygenPC.git "$USER_HOME/routerkeygen-src"
+    fi
+    ( cd "$USER_HOME/routerkeygen-src/cli" && qmake && make )
+    sudo cp "$USER_HOME/routerkeygen-src/cli/routerkeygen-cli" /usr/local/bin/
+fi
+
+# Wordlists (dans /usr/share/wordlists)
+sudo mkdir -p /usr/share/wordlists
+
+# rockyou (fourni compresse par le paquet wordlists)
+if [ ! -f /usr/share/wordlists/rockyou.txt ] && [ -f /usr/share/wordlists/rockyou.txt.gz ]; then
+    sudo gunzip -k /usr/share/wordlists/rockyou.txt.gz
+fi
+
+# 10k mots de passe courants (SecLists)
+if [ ! -f /usr/share/wordlists/10k-common.txt ]; then
+    sudo wget -O /usr/share/wordlists/10k-common.txt \
+        https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/10k-most-common.txt
+fi
+
+# vraies cles WPA cassees (SecLists)
+if [ ! -f /usr/share/wordlists/probable-wpa-top4800.txt ]; then
+    sudo wget -O /usr/share/wordlists/probable-wpa-top4800.txt \
+        https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/WiFi-WPA/probable-v2-wpa-top4800.txt
+fi
 
 echo ""
 echo "==> Installation terminée."
