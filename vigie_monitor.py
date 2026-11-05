@@ -1,17 +1,14 @@
-"""Moteur de monitoring Vigie : MITM (bettercap) + sniff du trafic, agrégé
-par appareil (quels domaines chaque machine contacte). Lancé via le script
-sudo fennec-monitor.
+"""Moteur de monitoring Vigie : MITM (bettercap) pour router le trafic par le Pi,
++ capture SNI/DNS via tshark (le moteur de Wireshark), qui lit le SNI du TLS
+classique (TCP/443) ET du QUIC (UDP/443, HTTP/3) — ce que bettercap ne faisait
+pas. Agrégé par appareil, clé = IP source (donnée directement par tshark).
 
-Format des lignes bettercap exploitées :
-  [..] [net.sniff.https] sni <appareil> > https://<domaine>
-  [..] [net.sniff.dns]   dns <résolveur> > <appareil> : <domaine> is <IPs>
-L'appareil est un nom d'hôte (ex. iPhone.lan.), pas une IP ; on relie ensuite
-ce nom à la fiche appareil par le reverse DNS côté Vigie. On indexe aussi par
-l'IP résolue du nom quand c'est possible, pour fiabiliser la correspondance.
+Le script sudo /usr/local/bin/fennec-monitor lance bettercap (arp.spoof) puis
+tshark en sortie « champs » tabulés :  ip.src <TAB> sni <TAB> dns
+Une seule colonne de domaine est renseignée par ligne ; on prend la première.
 """
 import os
 import re
-import socket
 import signal
 import subprocess
 import threading
@@ -21,77 +18,48 @@ from collections import deque, OrderedDict
 etat_monitor = {
     "actif": False,
     "depuis": None,
-    "hotes": {},                 # clé (nom d'hôte ou IP) -> OrderedDict(domaine -> ts)
+    "hotes": {},                 # ip -> OrderedDict(domaine -> ts)
     "brut": deque(maxlen=250),   # dernières lignes brutes (réglage)
 }
 
 _proc = None
 _thread = None
 _verrou = threading.Lock()
-_cache_ip = {}                   # nom d'hôte -> IP résolue (ou None)
 
 _RE_IP = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
-_RE_SNI = re.compile(r"\bsni\s+(\S+)\s+>\s+https?://([^\s/]+)", re.I)
-_RE_DNS = re.compile(r"\bdns\s+\S+\s+>\s+(\S+)\s+:\s+(\S+)", re.I)
-_IGNORER_DOM = re.compile(r"(\.lan|\.local|\.arpa)$", re.I)
+_IGNORER_DOM = re.compile(r"(\.lan|\.local|\.arpa|\.home|\.internal)$", re.I)
 
 
-def _resoudre(nom):
-    """Nom d'hôte -> IP (best-effort, mis en cache)."""
-    if nom in _cache_ip:
-        return _cache_ip[nom]
-    ip = None
-    try:
-        ip = socket.gethostbyname(nom)
-    except Exception:
-        ip = None
-    _cache_ip[nom] = ip
-    return ip
-
-
-def _cles(appareil):
-    """Clés d'indexation d'un appareil : son nom, et son IP résolue si dispo."""
-    a = appareil.strip().rstrip(".").lower()
-    if not a or a in ("gateway",) or _RE_IP.match(a):
-        # 'gateway'/une IP = résolveur, pas l'appareil demandeur utile
-        if _RE_IP.match(a):
-            return {a}
-        return set()
-    cles = {a}
-    ip = _resoudre(a)
-    if ip:
-        cles.add(ip)
-    return cles
-
-
-def _noter(cle, domaine):
+def _noter(ip, domaine):
     with _verrou:
-        d = etat_monitor["hotes"].setdefault(cle, OrderedDict())
+        d = etat_monitor["hotes"].setdefault(ip, OrderedDict())
         d[domaine] = time.time()
-        while len(d) > 50:
+        while len(d) > 60:
             d.popitem(last=False)
 
 
 def _traiter(ligne):
-    bas = ligne.lower()
-    if "sniff.mdns" in bas:
-        return                      # mDNS = bruit .local, on ignore
-    m = _RE_SNI.search(ligne)
-    if m:
-        appareil, dom = m.group(1), m.group(2)
-    else:
-        m = _RE_DNS.search(ligne)
-        if not m:
-            return
-        appareil, dom = m.group(1), m.group(2)
+    champs = ligne.rstrip("\n").split("\t")
+    if len(champs) < 2:
+        return
+    src = champs[0].strip()
+    if not _RE_IP.match(src):        # on ne garde que les sources IPv4
+        return
+    dom = ""
+    for c in champs[1:]:             # premier champ domaine non vide (sni, puis dns)
+        c = c.strip().split(",")[0]  # tshark peut concaténer plusieurs valeurs
+        if c:
+            dom = c
+            break
+    if not dom:
+        return
     dom = dom.lower().rstrip(".")
     if not dom or _RE_IP.match(dom) or _IGNORER_DOM.search(dom):
         return
-    for cle in _cles(appareil):
-        _noter(cle, dom)
+    _noter(src, dom)
 
 
-def _lire(proc, prefixe=None):
+def _lire(proc):
     for ligne in iter(proc.stdout.readline, ""):
         ligne = ligne.rstrip("\n")
         if not ligne:
@@ -104,7 +72,7 @@ def _lire(proc, prefixe=None):
 
 
 def demarrer(prefixe=None):
-    """Lance bettercap (via le script sudo) et le thread de lecture."""
+    """Lance le script (bettercap + tshark) et le thread de lecture."""
     global _proc, _thread
     if etat_monitor["actif"]:
         return True
@@ -123,14 +91,13 @@ def demarrer(prefixe=None):
         etat_monitor["depuis"] = time.time()
         etat_monitor["hotes"] = {}
         etat_monitor["brut"].clear()
-    _cache_ip.clear()
-    _thread = threading.Thread(target=_lire, args=(_proc, prefixe), daemon=True)
+    _thread = threading.Thread(target=_lire, args=(_proc,), daemon=True)
     _thread.start()
     return True
 
 
 def arreter():
-    """Coupe bettercap proprement (tout le groupe de processus)."""
+    """Coupe bettercap + tshark proprement (tout le groupe de processus)."""
     global _proc
     p = _proc
     if p and p.poll() is None:
@@ -151,7 +118,7 @@ def arreter():
 
 
 def horodates(cles):
-    """Domaines + dernier timestamp pour une ou plusieurs clés (IP et/ou nom)."""
+    """Domaines + dernier timestamp pour une ou plusieurs clés (IP)."""
     out = {}
     with _verrou:
         for cle in cles:
@@ -160,10 +127,11 @@ def horodates(cles):
                     out[dom] = ts
     return out
 
+
 def instantane():
     """Vue JSON-able : actif + domaines par appareil + dernières lignes brutes."""
     with _verrou:
-        hotes = {cle: [k for k, _ in sorted(d.items(), key=lambda kv: kv[1], reverse=True)]
-                 for cle, d in etat_monitor["hotes"].items()}
+        hotes = {ip: [k for k, _ in sorted(d.items(), key=lambda kv: kv[1], reverse=True)]
+                 for ip, d in etat_monitor["hotes"].items()}
         brut = list(etat_monitor["brut"])[-60:]
     return {"actif": etat_monitor["actif"], "hotes": hotes, "brut": brut}

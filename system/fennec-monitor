@@ -1,9 +1,24 @@
 #!/usr/bin/env bash
-# Monitoring Vigie : MITM + sniff du sous-réseau local via bettercap.
-# Révèle les domaines contactés par chaque appareil. Lancé en root (sudo).
-# Remplace bash par bettercap pour que l'arrêt (kill du groupe) soit propre.
+# Monitoring Vigie : MITM (bettercap arp.spoof) pour router le trafic du
+# sous-réseau par le Pi, + tshark pour extraire le SNI (TLS classique ET QUIC)
+# et les requêtes DNS. Sortie : "ip.src <TAB> sni <TAB> dns". Lancé en root.
 iface=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'dev \K\S+' | head -n1)
 [ -z "$iface" ] && iface=$(ip route 2>/dev/null | grep -oP 'default .*dev \K\S+' | head -n1)
 [ -z "$iface" ] && exit 1
-exec bettercap -iface "$iface" -no-colors -eval \
-  "set arp.spoof.fullduplex true; set net.sniff.verbose false; events.ignore endpoint.new; events.ignore endpoint.lost; net.probe on; arp.spoof on; net.sniff on"
+
+# bettercap : ARP spoof de tout le sous-réseau (routage via le Pi), sans sniff.
+bettercap -iface "$iface" -no-colors \
+  -eval "set arp.spoof.fullduplex true; net.probe on; arp.spoof on" >/dev/null 2>&1 &
+BETTER=$!
+# À l'arrêt (ou si tshark meurt), on coupe bettercap pour ne pas laisser le
+# réseau sous ARP spoofing.
+trap 'kill "$BETTER" 2>/dev/null' EXIT INT TERM
+sleep 1
+
+# tshark : SNI (TLS sur TCP et QUIC) + requêtes DNS, en flux, une ligne par paquet.
+tshark -i "$iface" -l -n -Q \
+  -Y 'tls.handshake.extensions_server_name || (dns.flags.response == 0 && dns.qry.name)' \
+  -T fields \
+  -e ip.src \
+  -e tls.handshake.extensions_server_name \
+  -e dns.qry.name

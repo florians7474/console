@@ -20,10 +20,13 @@ echo "==> Fennec : installation pour l'utilisateur '$USER_NAME'"
 # --- 1. Paquets système ---
 echo "==> Installation des paquets apt..."
 sudo apt update
-sudo apt install -y \
+# tshark (Vigie) : on capture en root via sudo, pas besoin du setuid non-root
+# -> on préremplit la question debconf pour éviter l'invite interactive.
+echo "wireshark-common wireshark-common/install-setuid boolean false" | sudo debconf-set-selections
+sudo DEBIAN_FRONTEND=noninteractive apt install -y \
     git python3-venv python3-dev python3-flask aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
-    liblgpio-dev swig libcap-dev iw \
+    liblgpio-dev swig libcap-dev iw tshark \
     john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev
 
 # --- 1b. Activation du SPI (requis par l'écran e-Paper de Bjorn) ---
