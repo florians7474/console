@@ -47,7 +47,7 @@ A single command on a freshly flashed Pi:
     cd fennec
     ./install.sh
 
-The script is idempotent and adapts to any user. It installs the system packages, sets up Pwnagotchi in an isolated environment, compiles pwngrid, builds routerkeygen-cli, installs the Raton dependencies (John, hcxtools, wordlists), generates a random password for bettercap, and configures the services. No sensitive data is stored in the repository.
+The script is idempotent and adapts to any user. It installs the system packages (including nmap), sets up Pwnagotchi in an isolated venv, compiles pwngrid, builds routerkeygen-cli, installs Bjorn in its own venv from a pinned requirements file that works on Python 3.13, downloads the Raton wordlists (10k-common, probable-wpa and rockyou from SecLists), generates a random bettercap password, and configures all systemd services. No sensitive data is stored in the repository.
 
 ## Usage
 

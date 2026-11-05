@@ -128,10 +128,16 @@ short candidate is ever shown or tested.
 ## Install (showcase)
 One command on a fresh Pi: git clone the repo, then ./install.sh (idempotent,
 adapts to any user/path; generates a random bettercap password; nothing
-sensitive in the repo). Installs Fennec, Pwnagotchi, Bjorn deps, and all Raton
-deps (routerkeygen, hcxtools, John, wordlists).
-Note: on Raspberry Pi OS Trixie, routerkeygen's qmake may default to Qt6;
-if the CLI build fails on a fresh Pi, force Qt5 (qmake -qt5).
+sensitive in the repo). Installs Fennec, Pwnagotchi, Bjorn (clone + dedicated
+venv + systemd services), and all Raton deps (routerkeygen, hcxtools, John,
+nmap, and the wordlists 10k-common / probable-wpa / rockyou fetched from
+SecLists).
+Notes:
+- On Raspberry Pi OS Trixie, routerkeygen's qmake may default to Qt6; if the
+  CLI build fails on a fresh Pi, force Qt5 (qmake -qt5).
+- Bjorn's upstream requirements.txt pins old versions (e.g. Pillow 9.4.0) that
+  do not build on Python 3.13; install.sh installs from a pinned
+  system/bjorn-requirements.txt instead (Pillow 11.1.0).
 
 ## Dev loop
 Edited directly on the Pi and pushed from there.
