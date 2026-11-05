@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import time
 import socket
 import raton_engine
 import vigie_monitor
@@ -12,6 +13,8 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 FICHIER_LISTE = os.path.join(BASE, "liste_blanche.json")
 FICHIER_MIENS = os.path.join(BASE, "mes_appareils.json")
 FICHIER_SCAN  = os.path.join(BASE, "scan_direct.json")
+FICHIER_NOMS  = os.path.join(BASE, "noms_appareils.json")   # {reseau: {mac: nom}}
+FICHIER_HIST  = os.path.join(BASE, "historique_trafic.json")  # {reseau: {mac: {domaine: ts}}}
 
 etat = {"mode_actif": None, "reseau": None}
 
@@ -223,7 +226,7 @@ def appareils_vigie():
         out.append({
             "ip": a["ip"],
             "mac": mac,
-            "nom": a["vendor"] or ("This Pi" if pi else ("Router" if routeur else "Unknown device")),
+            "nom": nom_perso(mac) or a["vendor"] or ("This Pi" if pi else ("Router" if routeur else "Unknown device")),
             "type": "pi" if pi else ("router" if routeur else "device"),
             "pi": pi,
             "routeur": routeur,
@@ -294,6 +297,81 @@ def deviner_type(ports, vendor):
     if "raspberry" in v:
         return "Raspberry Pi"
     return "Unknown"
+
+# ---------- Vigie : identité réseau, noms persos, historique de trafic ----------
+
+def id_reseau():
+    """Identifiant stable du réseau courant : MAC de la box, sinon le sous-réseau."""
+    pg = passerelle_ip()
+    if pg:
+        try:
+            r = subprocess.run(["ip", "neigh", "show", pg],
+                               capture_output=True, text=True, timeout=5)
+            m = re.search(r"lladdr ([0-9a-f:]{17})", r.stdout, re.I)
+            if m:
+                return m.group(1).upper()
+        except Exception:
+            pass
+    return sous_reseau_local() or "default"
+
+def nom_perso(mac):
+    """Nom donné par l'utilisateur à un appareil (ce réseau), ou None."""
+    if not mac:
+        return None
+    noms = _charger(FICHIER_NOMS)
+    if not isinstance(noms, dict):
+        return None
+    return noms.get(id_reseau(), {}).get(mac.upper())
+
+def definir_nom(mac, nom):
+    noms = _charger(FICHIER_NOMS)
+    if not isinstance(noms, dict):
+        noms = {}
+    rid = id_reseau()
+    noms.setdefault(rid, {})
+    nom = (nom or "").strip()[:40]
+    if nom:
+        noms[rid][mac.upper()] = nom
+    else:
+        noms[rid].pop(mac.upper(), None)
+    _sauver(FICHIER_NOMS, noms)
+
+# Historique de trafic gardé en mémoire, écrit sur disque de temps en temps.
+_hist = None
+_hist_dirty = False
+_hist_last = 0.0
+
+def _hist_charger():
+    global _hist
+    if _hist is None:
+        h = _charger(FICHIER_HIST)
+        _hist = h if isinstance(h, dict) else {}
+    return _hist
+
+def _hist_flush(force=False):
+    global _hist_dirty, _hist_last
+    if _hist is None or (not _hist_dirty and not force):
+        return
+    if not force and (time.time() - _hist_last) < 20:
+        return
+    _sauver(FICHIER_HIST, _hist)
+    _hist_dirty = False
+    _hist_last = time.time()
+
+def fusionner_trafic(mac, live):
+    """Fusionne les domaines live (dict domaine->ts) dans l'historique de l'appareil."""
+    global _hist_dirty
+    if not mac:
+        return dict(live)
+    h = _hist_charger()
+    rid = id_reseau()
+    dev = h.setdefault(rid, {}).setdefault(mac.upper(), {})
+    for dom, ts in live.items():
+        if dom not in dev or ts > dev[dom]:
+            dev[dom] = ts
+            _hist_dirty = True
+    _hist_flush()
+    return dev
 
 @app.route("/")
 def accueil():
@@ -598,6 +676,7 @@ def vigie_monitor_start():
 @app.route("/vigie/monitor/stop")
 def vigie_monitor_stop():
     vigie_monitor.arreter()
+    _hist_flush(force=True)
     if etat["mode_actif"] == "vigie":
         etat["mode_actif"] = None
     return jsonify({"actif": False})
@@ -605,6 +684,26 @@ def vigie_monitor_stop():
 @app.route("/vigie/monitor/data")
 def vigie_monitor_data():
     return jsonify(vigie_monitor.instantane())
+
+@app.route("/vigie/trafic/<ip>")
+def vigie_trafic(ip):
+    if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip):
+        return jsonify({"actif": False, "domaines": []})
+    d = _dernier_scan.get(ip) or {}
+    mac = d.get("mac")
+    hote = (nom_hote(ip) or "").lower().rstrip(".")
+    live = vigie_monitor.horodates([c for c in (ip, hote) if c])
+    dom_ts = fusionner_trafic(mac, live)   # fusionne live + historique persistant
+    items = sorted(dom_ts.items(), key=lambda kv: kv[1], reverse=True)
+    return jsonify({
+        "actif": vigie_monitor.etat_monitor["actif"],
+        "domaines": [{"d": dom, "t": ts} for dom, ts in items],
+    })
+
+@app.route("/vigie/nom/<mac>", methods=["POST"])
+def vigie_nom(mac):
+    definir_nom(mac, request.form.get("nom", ""))
+    return jsonify({"ok": True, "nom": nom_perso(mac)})
 
 # ---------- Whitelist (routes) ----------
 

@@ -149,6 +149,16 @@ def arreter():
         etat_monitor["actif"] = False
 
 
+def horodates(cles):
+    """Domaines + dernier timestamp pour une ou plusieurs clés (IP et/ou nom)."""
+    out = {}
+    with _verrou:
+        for cle in cles:
+            for dom, ts in etat_monitor["hotes"].get(cle, {}).items():
+                if dom not in out or ts > out[dom]:
+                    out[dom] = ts
+    return out
+
 def instantane():
     """Vue JSON-able : actif + domaines par appareil + dernières lignes brutes."""
     with _verrou:
