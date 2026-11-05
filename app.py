@@ -27,22 +27,6 @@ RESEAUX_GEO = [
     {"nom": "orange-FA22",  "bssid": "5C:DC:96:FA:22:10", "lat": 48.8551, "lon": 2.3505, "signal": -80},
 ]
 
-# Simulated devices. "mine" is no longer hardcoded: it comes from mes_appareils.json.
-APPAREILS_SIMULES = [
-    {"id": "box",    "nom": "Router / Gateway",  "ip": "192.168.1.1",  "type": "router",
-     "trafic": ["orange.fr", "dns.google", "ntp.org"]},
-    {"id": "iph",    "nom": "Florian's iPhone",  "ip": "192.168.1.42", "type": "smartphone",
-     "trafic": ["apple.com", "instagram.com", "whatsapp.net", "lemonde.fr", "google.com"]},
-    {"id": "pc",     "nom": "Florian's PC",      "ip": "192.168.1.10", "type": "computer",
-     "trafic": ["github.com", "cloudflare.com", "microsoft.com", "youtube.com", "digitechnologie.com"]},
-    {"id": "tv",     "nom": "Living room TV",    "ip": "192.168.1.23", "type": "TV",
-     "trafic": ["samsung.com", "netflix.com", "youtube.com"]},
-    {"id": "inc",    "nom": "Unknown device",    "ip": "192.168.1.55", "type": "unknown",
-     "trafic": ["akamai.net", "amazonaws.com"]},
-    {"id": "invite", "nom": "Galaxy (guest)",    "ip": "192.168.1.60", "type": "smartphone",
-     "trafic": ["snapchat.com", "tiktok.com", "google.com"]},
-]
-
 # ---------- JSON files ----------
 
 def _charger(fichier):
@@ -171,16 +155,87 @@ def etat_connexion():
         return {"type": "wifi", "nom": wifi or "Wi-Fi"}
     return {"type": None, "nom": "Offline"}
 
-def sous_reseau_local():
-    """Sous-réseau /24 du Pi (ex. 192.168.1.0/24), ou None."""
+def ip_locale():
+    """Première IPv4 non-loopback du Pi, ou None."""
     try:
         r = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=5)
     except Exception:
         return None
     for tok in r.stdout.split():
         if tok.count(".") == 3 and not tok.startswith("127."):
-            return ".".join(tok.split(".")[:3]) + ".0/24"
+            return tok
     return None
+
+def sous_reseau_local():
+    """Sous-réseau /24 du Pi (ex. 192.168.1.0/24), ou None."""
+    ip = ip_locale()
+    return ".".join(ip.split(".")[:3]) + ".0/24" if ip else None
+
+def passerelle_ip():
+    """IP de la passerelle par défaut (la box), ou None."""
+    try:
+        r = subprocess.run(["ip", "route"], capture_output=True, text=True, timeout=5)
+    except Exception:
+        return None
+    m = re.search(r"default via ([\d.]+)", r.stdout)
+    return m.group(1) if m else None
+
+def scan_reseau():
+    """Appareils du LAN via nmap -sn (script sudo dédié). IP, MAC, constructeur."""
+    try:
+        r = subprocess.run(
+            ["sudo", "-n", "/usr/local/bin/fennec-netscan"],
+            capture_output=True, text=True, timeout=90,
+        )
+    except Exception:
+        return []
+    appareils, courant = [], None
+    for ligne in r.stdout.splitlines():
+        m = re.search(r"Nmap scan report for (.+)", ligne)
+        if m:
+            cible = m.group(1).strip()
+            mip = re.search(r"\(([\d.]+)\)", cible)
+            ip = mip.group(1) if mip else cible
+            courant = {"ip": ip, "mac": None, "vendor": None}
+            appareils.append(courant)
+            continue
+        mmac = re.search(r"MAC Address:\s*([0-9A-Fa-f:]{17})\s*(?:\((.*)\))?", ligne)
+        if mmac and courant is not None:
+            courant["mac"] = mmac.group(1).upper()
+            v = (mmac.group(2) or "").strip()
+            courant["vendor"] = v or None
+    return appareils
+
+def appareils_vigie():
+    """Liste enrichie pour Vigie : type, 'à moi', inconnu ; inconnus en tête."""
+    mienne = ip_locale()
+    passerelle = passerelle_ip()
+    miens = set(charger_miens())
+    out = []
+    for a in scan_reseau():
+        pi = (a["ip"] == mienne)
+        routeur = (a["ip"] == passerelle)
+        mac = a["mac"]
+        mien = (mac in miens)
+        inconnu = not pi and not routeur and not mien
+        out.append({
+            "ip": a["ip"],
+            "mac": mac,
+            "nom": a["vendor"] or ("This Pi" if pi else ("Router" if routeur else "Unknown device")),
+            "type": "pi" if pi else ("router" if routeur else "device"),
+            "pi": pi,
+            "routeur": routeur,
+            "mien": mien,
+            "inconnu": inconnu,
+        })
+    # Inconnus d'abord, puis par IP (ordre numérique sur les octets)
+    def cle_ip(d):
+        try:
+            return tuple(int(x) for x in d["ip"].split("."))
+        except Exception:
+            return (999,)
+    out.sort(key=lambda d: (not d["inconnu"], cle_ip(d)))
+    return out
 
 @app.route("/")
 def accueil():
@@ -414,33 +469,26 @@ def connexion_stop():
 
 @app.route("/vigie")
 def vigie():
-    miens = set(charger_miens())
-    return render_template("vigie.html", appareils=APPAREILS_SIMULES, reseau=etat["reseau"], miens=miens)
+    appareils = appareils_vigie()
+    inconnus = sum(1 for a in appareils if a["inconnu"])
+    return render_template("vigie.html", appareils=appareils,
+                           total=len(appareils), inconnus=inconnus)
 
-@app.route("/vigie/mien/<id_app>")
-def vigie_mien(id_app):
+@app.route("/vigie/mien/<mac>")
+def vigie_mien(mac):
+    mac = mac.upper()
     ids = charger_miens()
-    if id_app not in ids and any(a["id"] == id_app for a in APPAREILS_SIMULES):
-        ids.append(id_app)
+    if mac not in ids:
+        ids.append(mac)
         sauver_miens(ids)
     return redirect(url_for("vigie"))
 
-@app.route("/vigie/pasmien/<id_app>")
-def vigie_pasmien(id_app):
-    ids = [i for i in charger_miens() if i != id_app]
+@app.route("/vigie/pasmien/<mac>")
+def vigie_pasmien(mac):
+    mac = mac.upper()
+    ids = [i for i in charger_miens() if i.upper() != mac]
     sauver_miens(ids)
     return redirect(url_for("vigie"))
-
-@app.route("/vigie/trafic/<id_app>")
-def vigie_trafic(id_app):
-    if not etat["reseau"]:
-        return redirect(url_for("vigie"))
-    if id_app not in set(charger_miens()):          # LOCK: only your declared devices
-        return redirect(url_for("vigie"))
-    appareil = next((a for a in APPAREILS_SIMULES if a["id"] == id_app), None)
-    if not appareil:
-        return redirect(url_for("vigie"))
-    return render_template("vigie_trafic.html", a=appareil)
 
 # ---------- Whitelist (routes) ----------
 

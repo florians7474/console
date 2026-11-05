@@ -41,7 +41,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Bjorn | LAN scan/attack (infinition/Bjorn) | Done (install + control + live console) |
 | Raton | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
 | Connexion | Join a whitelisted network (Wi-Fi lock step 2) | Stub only (stores target in memory, no real nmcli yet) |
-| Vigie | Network monitor (own devices only) | Mockup (simulated devices, not real yet) |
+| Vigie | Network radar (devices on the LAN) | Done v1 (real ARP scan via nmap, mine/unknown by MAC); per-device traffic/domains later |
 | Carte | Wardriving map (WiGLE-style) | To do |
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
@@ -66,6 +66,17 @@ coded in-house.
   native popup (which is unusable on the kiosk touchscreen).
 - Bjorn's stopped screen names the network and /24 subnet it will scan (or asks
   to connect when offline), so the target is obvious before pressing Start.
+
+## Vigie (device radar)
+- Real ARP scan of the current /24 via nmap -sn, run as root by a dedicated
+  sudo helper (/usr/local/bin/fennec-netscan, allowed in fennec.sudoers). Needs
+  root so nmap returns MAC addresses + vendor (OUI).
+- Each device: IP, MAC, vendor. The Pi (own IP) is tagged "This Pi", the default
+  gateway "Router"; both are excluded from the unknown count.
+- Mine vs unknown is keyed by MAC (stable across IP changes), stored in
+  mes_appareils.json (gitignored). One tap on an "Unknown" chip marks it mine.
+- Unknown devices sort to the top; header shows "N devices · M unknown".
+- Scans on open; "Rescan" reloads. Traffic/domains per device is v2 (MITM).
 
 ## Raton — cracking engine
 Local cracking = aircrack-ng (stable on ARM, CPU). hashcat is NOT used locally
@@ -181,7 +192,8 @@ Editing any project file: nano ~/console/<file>.
   Currently a stub that only stores the target in memory.
 - Wi-Fi lock step 3: Bjorn start gate (ethernet allowed; on Wi-Fi the connected
   BSSID must be in the whitelist)
-- Vigie: replace the simulated device list with real monitoring
+- Vigie v2: per-device traffic / contacted domains (needs MITM via bettercap;
+  v1 already does the real device radar — ARP scan, mine vs unknown by MAC)
 - Carte: build the wardriving map (uses the VK-162 GPS)
 
 ## Known issues
