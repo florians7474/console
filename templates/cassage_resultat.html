@@ -93,15 +93,24 @@
         document.getElementById('tested').textContent = fmt(e.testes||0) + ' keys';
         document.getElementById('speed').textContent = (e.vitesse||0) + ' k/s';
         document.getElementById('cand').textContent = e.candidat || '…';
-        var pct = e.total ? Math.min(100, (e.testes/e.total)*100) : 0;
-        document.getElementById('bar').style.width = pct + '%';
-
         var barEl = document.querySelector('.bar');
-        if(e.flux){
-          barEl.classList.add('flux');
-          document.getElementById('tested').textContent = 'streaming';
-        } else {
+        if(e.jauge_temps){
+          var pt = e.temps_total ? Math.min(100, (e.temps_ecoule/e.temps_total)*100) : 0;
+          document.getElementById('bar').style.width = pt + '%';
           barEl.classList.remove('flux');
+          document.getElementById('tested').textContent = '';
+          var s = e.temps_ecoule || 0;
+          document.getElementById('speed').textContent =
+            Math.floor(s/60) + ':' + ('0'+(s%60)).slice(-2) + ' / 60:00';
+        } else {
+          var pct = e.total ? Math.min(100, (e.testes/e.total)*100) : 0;
+          document.getElementById('bar').style.width = pct + '%';
+          if(e.flux){
+            barEl.classList.add('flux');
+            document.getElementById('tested').textContent = 'streaming';
+          } else {
+            barEl.classList.remove('flux');
+          }
         }
 
         var jl = e.journal || [];

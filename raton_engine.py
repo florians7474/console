@@ -37,6 +37,7 @@ _proc = None
 RE_TESTES = re.compile(r"(\d+)/(\d+)\s+keys tested\s+\(([\d.]+)\s*k/s\)")
 RE_CANDIDAT = re.compile(r"Current passphrase:\s*(.*\S)")
 RE_TROUVE = re.compile(r"KEY FOUND!\s*\[\s*(.+?)\s*\]")
+RE_TESTES_FLUX = re.compile(r"(\d+)\s+keys tested\s+\(([\d.]+)\s*k/s\)")
 
 
 def _reset(bssid, reseau):
@@ -91,8 +92,37 @@ def generer_dates(fichier, an_debut=1950, an_fin=2025):
                     f.write("%04d%02d%02d\n" % (annee, mois, jour))
     return fichier
 
+_profils_cache = None
+
+def _charger_profils():
+    """Load the box-profile knowledge base (tiny JSON next to this engine)."""
+    global _profils_cache
+    if _profils_cache is not None:
+        return _profils_cache
+    import json
+    chemin = os.path.join(os.path.dirname(os.path.abspath(__file__)), "profils_box.json")
+    try:
+        with open(chemin, encoding="utf-8") as f:
+            _profils_cache = json.load(f).get("profils", [])
+    except (OSError, ValueError):
+        _profils_cache = []
+    return _profils_cache
+
+def profil_pour_essid(essid):
+    """Return the matching box profile for an ESSID, or None."""
+    if not essid:
+        return None
+    for p in _charger_profils():
+        if essid.startswith(p.get("prefixe", "\0")):
+            return p
+    return None
+
 def cles_constructeur(essid, bssid):
-    """Stage 1: ask routerkeygen-cli for factory default key candidates."""
+    """Stage 1: targeted factory keys = box-profile routing + routerkeygen-cli."""
+    profil = profil_pour_essid(essid)
+    # Known non-target (community hotspot, etc.): skip the whole stage.
+    if profil and profil.get("algo") == "ignore":
+        return []
     try:
         out = subprocess.run(
             ["routerkeygen-cli", "-q", "-s", essid, "-m", bssid],
@@ -100,20 +130,53 @@ def cles_constructeur(essid, bssid):
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return []
-    cles = []
+    cles, vus = [], set()
     for ligne in out.stdout.splitlines():
         c = ligne.strip()
-        if 8 <= len(c) <= 63 and " " not in c:
+        if 8 <= len(c) <= 63 and " " not in c and c not in vus:
+            vus.add(c)
             cles.append(c)
     return cles
 
+def mots_essid(essid):
+    """Extract seed words from a *custom* network name.
+    Returns [] for generic/box names (already handled by the factory stage)."""
+    if not essid:
+        return []
+    if profil_pour_essid(essid):      # known box prefix -> generic name, skip
+        return []
+    mots = set()
+    nu = essid.strip()
+    compact = re.sub(r"[^A-Za-z0-9]", "", nu)
+    for v in (nu, compact):
+        if v:
+            mots.add(v)
+            mots.add(v.lower())
+    for t in re.split(r"[^A-Za-z]+", nu):
+        if len(t) >= 3:
+            mots.add(t)
+            mots.add(t.lower())
+            mots.add(t.capitalize())
+    return sorted(mots)
+
+def generer_essid(fichier, essid):
+    """Stage 2 seed file: custom-name words (John rules mutate them later)."""
+    mots = mots_essid(essid)
+    with open(fichier, "w") as f:
+        for m in mots:
+            f.write(m + "\n")
+    return len(mots)
+
 ETAGES = [
     {"nom": "factory default keys", "type": "constructeur"},
-    {"nom": "common passwords", "type": "wordlist", "fichier": "/usr/share/wordlists/10k-common.txt"},
+    {"nom": "ESSID profiling (custom name)", "type": "essid"},
+    {"nom": "real cracked keys (probable-wpa)", "type": "wordlist", "fichier": "/usr/share/wordlists/probable-wpa-top4800.txt"},
+    {"nom": "birth dates (DDMMYYYY/YYYYMMDD)", "type": "genere", "generateur": generer_dates},
+    {"nom": "10k common passwords", "type": "wordlist", "fichier": "/usr/share/wordlists/10k-common.txt"},
     {"nom": "keyboard patterns", "type": "genere", "generateur": generer_clavier},
-    {"nom": "dates (DDMMYYYY/YYYYMMDD)", "type": "genere", "generateur": generer_dates},
     {"nom": "common + mutation rules", "type": "regles", "fichier": "/usr/share/wordlists/10k-common.txt"},
-    {"nom": "rockyou", "type": "wordlist", "fichier": WORDLISTS["rockyou"]},
+    {"nom": "John incremental (1h)", "type": "temps", "source": "john_inc"},
+    {"nom": "rockyou random (1h)", "type": "temps", "source": "rockyou_shuf"},
 ]
 
 def _run(pcap, bssid, reseau, wordlist):
@@ -125,7 +188,7 @@ def _run(pcap, bssid, reseau, wordlist):
         if not etat_cassage["actif"]:
             break
 
-        # Prepare this stage's wordlist
+        # Prepare this stage's wordlist / source
         if etage["type"] == "constructeur":
             cles = cles_constructeur(reseau, bssid)
             if not cles:
@@ -135,16 +198,36 @@ def _run(pcap, bssid, reseau, wordlist):
             wl = "/tmp/raton_stage_const.txt"
             with open(wl, "w") as f:
                 f.write("\n".join(cles) + "\n")
+        elif etage["type"] == "essid":
+            seed = "/tmp/raton_stage_essid.txt"
+            n = generer_essid(seed, reseau)
+            if n == 0:
+                with _verrou:
+                    etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})
+                continue
+            gen = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raton_essid_gen.py")
+            wl = "/dev/shm/raton_essid.txt"
+            with open(wl, "w") as f:
+                p1 = subprocess.Popen(["python3", gen, seed],
+                                      stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                subprocess.run(["head", "-n", "100000"], stdin=p1.stdout, stdout=f)
+                p1.stdout.close()
+                p1.wait()
         elif etage["type"] == "genere":
             wl = "/tmp/raton_stage_gen.txt"
             etage["generateur"](wl)
         elif etage["type"] == "regles":
             wl = "PIPE_JOHN"
             dico_regles = etage["fichier"]
-            
+        elif etage["type"] == "temps":
+            wl = "TEMPS"
         else:
-            wl = etage["fichier"]
+            base = etage["fichier"]
+            wl = "/dev/shm/raton_wl.txt"
+            with open(wl, "w") as f:
+                subprocess.run(["awk", "length>=8 && length<=63", base], stdout=f)
 
+        est_temps = (etage["type"] == "temps")
         with _verrou:
             etat_cassage["etape"] = etage["nom"]
             etat_cassage["etape_num"] = i
@@ -152,6 +235,9 @@ def _run(pcap, bssid, reseau, wordlist):
             etat_cassage["total"] = 0
             etat_cassage["candidat"] = ""
             etat_cassage["flux"] = (etage["type"] == "regles")
+            etat_cassage["jauge_temps"] = est_temps
+            etat_cassage["temps_total"] = 3600 if est_temps else 0
+            etat_cassage["temps_ecoule"] = 0
 
         try:
             if os.path.exists(keyfile):
@@ -160,24 +246,74 @@ def _run(pcap, bssid, reseau, wordlist):
             pass
 
         _john = None
+        _head = None
         if wl == "PIPE_JOHN":
             _john = subprocess.Popen(
                 ["john", "--stdout", "--rules", "--wordlist=" + dico_regles],
                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             )
+            _head = subprocess.Popen(
+                ["awk", "length>=8 && length<=63"],
+                stdin=_john.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            )
+            _john.stdout.close()
+            aircrack_stdin = _head.stdout
             cmd = ["aircrack-ng", "-w", "-", "-l", keyfile, "-b", bssid, pcap]
-            aircrack_stdin = _john.stdout
+        elif wl == "PIPE_ESSID":
+            gen = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raton_essid_gen.py")
+            _john = subprocess.Popen(
+                ["python3", gen, dico_regles],
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            )
+            _head = subprocess.Popen(
+                ["head", "-n", "100000"],
+                stdin=_john.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            )
+            _john.stdout.close()
+            aircrack_stdin = _head.stdout
+            cmd = ["aircrack-ng", "-w", "-", "-l", keyfile, "-b", bssid, pcap]
+        elif wl == "TEMPS":
+            if etage["source"] == "john_inc":
+                src = ["john", "--stdout", "--incremental=ASCII"]
+            else:
+                src = ["shuf", WORDLISTS["rockyou"]]
+            _john = subprocess.Popen(src, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            _head = subprocess.Popen(
+                ["awk", "length>=8 && length<=63"],
+                stdin=_john.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            )
+            _john.stdout.close()
+            aircrack_stdin = _head.stdout
+            cmd = ["aircrack-ng", "-w", "-", "-l", keyfile, "-b", bssid, pcap]
         else:
             cmd = ["aircrack-ng", "-w", wl, "-l", keyfile, "-b", bssid, pcap]
             aircrack_stdin = None
+
         try:
             _proc = subprocess.Popen(
                 cmd, stdin=aircrack_stdin, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                universal_newlines=True, bufsize=1,
+                encoding="utf-8", errors="replace", bufsize=1,
             )
         except FileNotFoundError:
             etat_cassage.update({"actif": False, "fini": True, "message": "aircrack-ng not found"})
             return
+
+        if est_temps:
+            fin = time.time() + 3600
+            def _horloge(p, src_proc, fin):
+                while p.poll() is None:
+                    reste = fin - time.time()
+                    with _verrou:
+                        etat_cassage["temps_ecoule"] = max(0, min(3600, int(3600 - reste)))
+                    if reste <= 0:
+                        for q in (p, src_proc):
+                            try:
+                                q.terminate()
+                            except Exception:
+                                pass
+                        break
+                    time.sleep(1)
+            threading.Thread(target=_horloge, args=(_proc, _john, fin), daemon=True).start()
 
         buf = ""
         while True:
@@ -192,6 +328,11 @@ def _run(pcap, bssid, reseau, wordlist):
         if _john is not None:
             try:
                 _john.terminate()
+            except Exception:
+                pass
+        if _head is not None:
+            try:
+                _head.terminate()
             except Exception:
                 pass
 
@@ -221,7 +362,7 @@ def _run(pcap, bssid, reseau, wordlist):
         etat_cassage["actif"] = False
         etat_cassage["fini"] = True
         etat_cassage["robustesse"] = _score_robustesse(None, etat_cassage["etape_total"])
-        etat_cassage["message"] = "Exhausted"        
+        etat_cassage["message"] = "Exhausted"
 
 def _score_robustesse(etage_echec, total):
     """Robustness = the stage that cracked the key. Earlier stage = weaker key."""
@@ -232,9 +373,15 @@ def _score_robustesse(etage_echec, total):
             "detail": "Key resisted every offline cracking stage.",
         }
     libelles = {
-        1: ("Critical", "Factory-default or vendor-pattern key, recovered instantly."),
-        2: ("Very weak", "Key found in a common-password list."),
-        3: ("Weak", "Key found in the rockyou wordlist."),
+        1: ("Critical",  "Factory-default / vendor-pattern key, recovered instantly."),
+        2: ("Critical",  "Key derived from the network name itself."),
+        3: ("Very weak", "Key found in a database of already-cracked WPA keys."),
+        4: ("Very weak", "Key is a birth date."),
+        5: ("Weak",      "Key found in a common-password list."),
+        6: ("Weak",      "Key is a keyboard pattern."),
+        7: ("Weak",      "Key is a simple variation of a common word."),
+        8: ("Moderate",  "Key recovered by a short brute-force pass (under 1h)."),
+        9: ("Moderate",  "Key found in the rockyou wordlist."),
     }
     label, detail = libelles.get(etage_echec, ("Weak", "Key recovered by an early stage."))
     return {
@@ -261,7 +408,6 @@ def _parser(ligne):
         with _verrou:
             etat_cassage["trouve"] = True
             etat_cassage["cle"] = m.group(1)
-
 
 def arreter():
     global _proc

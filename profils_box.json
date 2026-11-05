@@ -1,0 +1,19 @@
+{
+  "_schema": "prefixe_essid -> {vendeur, modele, algo, remarque}. algo=routerkeygen : la derivation est deleguee a routerkeygen-cli. algo=faible : defaut court connu, passe rapide.",
+  "profils": [
+    { "prefixe": "Livebox-",   "vendeur": "Orange",    "modele": "Livebox",        "algo": "routerkeygen", "remarque": "cle usine = fonction du BSSID sur anciens firmwares" },
+    { "prefixe": "LiveboxFibre","vendeur": "Orange",    "modele": "Livebox Fibre",  "algo": "routerkeygen", "remarque": "idem Livebox" },
+    { "prefixe": "Orange-",    "vendeur": "Orange",     "modele": "Livebox",        "algo": "routerkeygen", "remarque": "ancien prefixe Orange" },
+    { "prefixe": "SFR-",       "vendeur": "SFR",        "modele": "NB4/NB6/Box",     "algo": "routerkeygen", "remarque": "derivation WPA selon generation du firmware" },
+    { "prefixe": "NEUF_",      "vendeur": "SFR",        "modele": "Neuf Box",        "algo": "routerkeygen", "remarque": "ancien parc Neuf/SFR" },
+    { "prefixe": "Bbox-",      "vendeur": "Bouygues",   "modele": "Bbox",            "algo": "routerkeygen", "remarque": "cle usine liee au BSSID" },
+    { "prefixe": "bbox-",      "vendeur": "Bouygues",   "modele": "Bbox",            "algo": "routerkeygen", "remarque": "variante casse" },
+    { "prefixe": "Freebox-",   "vendeur": "Free",       "modele": "Freebox",         "algo": "routerkeygen", "remarque": "cle usine longue aleatoire sur recents : attendre peu" },
+    { "prefixe": "FreeWifi",   "vendeur": "Free",       "modele": "hotspot",         "algo": "ignore",       "remarque": "reseau communautaire, hors cible" },
+    { "prefixe": "TP-LINK_",   "vendeur": "TP-Link",    "modele": "routeur grand public", "algo": "routerkeygen", "remarque": "certains modeles a defaut derivable" },
+    { "prefixe": "Thomson",    "vendeur": "Thomson",    "modele": "Thomson/SpeedTouch", "algo": "routerkeygen", "remarque": "ThomsonKeygen historique" },
+    { "prefixe": "SpeedTouch", "vendeur": "Thomson",    "modele": "SpeedTouch",      "algo": "routerkeygen", "remarque": "idem Thomson" },
+    { "prefixe": "dlink-",     "vendeur": "D-Link",     "modele": "routeur grand public", "algo": "routerkeygen", "remarque": "selon modele" },
+    { "prefixe": "NETGEAR",    "vendeur": "Netgear",    "modele": "routeur grand public", "algo": "routerkeygen", "remarque": "selon modele" }
+  ]
+}
