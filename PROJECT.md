@@ -41,7 +41,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Bjorn | LAN scan/attack (infinition/Bjorn) | Done (install + control + live console) |
 | Raton | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
 | Connexion | Join a whitelisted network (Wi-Fi lock step 2) | Stub only (stores target in memory, no real nmcli yet) |
-| Vigie | Network radar (devices on the LAN) | Done v1 (real ARP scan via nmap, mine/unknown by MAC); per-device traffic/domains later |
+| Vigie | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, and live traffic monitoring via bettercap MITM with saved history) |
 | Carte | Wardriving map (WiGLE-style) | To do |
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
@@ -81,8 +81,27 @@ coded in-house.
   (nmap -sT -F, rootless connect scan, no sudo), open ports + services, a
   device-type guess from the ports then the vendor, hostname (reverse DNS),
   MAC and vendor. Last scan cached in _dernier_scan so the detail doesn't
-  re-sweep the whole subnet.
-- Traffic/domains per device is v2 (MITM via bettercap).
+  re-sweep the whole subnet; if the cache is empty, the MAC is read from the
+  ARP table (ip neigh) so naming and history still work.
+- Rename a device (pencil on the detail): the custom name is saved per network
+  (noms_appareils.json, gitignored), keyed by network id (gateway MAC) + device
+  MAC, so it survives rescans and is scoped to that network. It shows in the list
+  and the detail.
+- Traffic watch ("Watch" button): starts a MITM of the whole subnet via bettercap
+  (/usr/local/bin/fennec-monitor, sudo) to reveal the domains each device
+  contacts. It runs as an exclusive mode (stops Pwnagotchi/Bjorn/Raton, and they
+  stop it). The capture engine is vigie_monitor.py: it reads bettercap's sniff
+  output, pulls the device (hostname) + domain from the DNS and TLS-SNI lines,
+  and keys traffic by the device and its resolved IP. Reading tolerates non-UTF8
+  bytes; bettercap is stopped cleanly on Stop and on Fennec exit (atexit), so the
+  network isn't left under ARP spoofing.
+- Traffic history is persistent: domains per device are kept in
+  historique_trafic.json (gitignored), scoped per network, each with a last-seen
+  timestamp shown as "X ago". The detail shows the saved history even when the
+  monitor is off, and merges live domains while it runs. Flushed to disk at most
+  every ~20s and on Stop, to spare the SD card.
+- Limit: a privacy-hardened device (Android Private DNS = encrypted DNS, plus
+  QUIC/HTTP3) shows little or nothing, since its DNS and SNI are encrypted.
 
 ## Raton — cracking engine
 Local cracking = aircrack-ng (stable on ARM, CPU). hashcat is NOT used locally
@@ -187,6 +206,10 @@ Notes:
 - Bjorn's web server is patched at install time (allow_reuse_address + a fixed
   port 8000): upstream jumps to 8001 on a quick Stop/Start because the port is
   still in TIME_WAIT, which breaks the embedded view. The patch keeps it on 8000.
+- Vigie uses three small sudo helpers installed to /usr/local/bin:
+  fennec-netscan (nmap ARP sweep), fennec-monitor (bettercap MITM + sniff) and
+  fennec-clear-handshakes (delete Pwnagotchi captures). Each is granted by an
+  exact-path rule in fennec.sudoers, so no broad sudo is given.
 
 ## Dev loop
 Edited directly on the Pi and pushed from there.
@@ -198,11 +221,16 @@ Editing any project file: nano ~/console/<file>.
   Currently a stub that only stores the target in memory.
 - Wi-Fi lock step 3: Bjorn start gate (ethernet allowed; on Wi-Fi the connected
   BSSID must be in the whitelist)
-- Vigie v2: per-device traffic / contacted domains (needs MITM via bettercap;
-  v1 already does the real device radar — ARP scan, mine vs unknown by MAC)
+- Vigie v3 (optional): make the Pi the network's DNS server so even hardened
+  devices (encrypted DNS + QUIC) reveal their resolutions. v1 (device radar) and
+  v2 (per-device port scan/type, naming, and traffic watch via MITM with saved
+  history) are done.
 - Carte: build the wardriving map (uses the VK-162 GPS)
 
 ## Known issues
 - Flask runs in debug (debug=True), leaves 2 processes on :5000 ("Address
   already in use" on restart). Workaround: sudo kill $(sudo lsof -t -i :5000).
   Will disappear once Fennec runs as a systemd service. Not urgent.
+- While Vigie's Watch (MITM) is active, all LAN traffic routes through the Pi,
+  so SSH and the UI can lag; it recovers once you Stop. Starting another mode or
+  quitting Fennec stops it automatically.

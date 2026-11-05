@@ -17,17 +17,17 @@ The project also serves as a hands-on sandbox for learning offensive security. T
 | **Pwnagotchi** | Passive Wi-Fi handshake capture | ✅ Working |
 | **Bjorn** | Network reconnaissance and targeted attacks | ✅ Working |
 | **Raton** | Offline WPA cracking on your own captures | ✅ Working |
-| **Vigie** | Network radar: devices on your LAN, yours vs unknown | ✅ Working |
+| **Vigie** | Network radar + per-device traffic watch | ✅ Working |
 | **Carte** | Network mapping (wardriving) | 🚧 Planned |
 
 The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and opens the allowed-networks manager where you scan for networks and pick the ones you are allowed to test.
 
-**Pwnagotchi**, **Bjorn** and **Raton** are operational: automatic installation, control from the tile, and a live view inside the interface.
+**Pwnagotchi**, **Bjorn**, **Raton** and **Vigie** are operational: automatic installation, control from the tile, and a live view inside the interface.
 
 - **Pwnagotchi** captures handshakes in the background and mirrors its head live in the tile.
 - **Bjorn** scans and probes the network the Pi is currently on. The screen names that network and its subnet before you start, so there is no doubt about what is being audited, and its live console streams inside the tile.
 - **Raton** runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known cracked keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-step handoff to GPU cracking. Captures with no usable handshake are flagged and cannot be tested, so a network is never wrongly reported as robust.
-- **Vigie** scans the current subnet (ARP via nmap) and lists every device with its IP, MAC and vendor. Unknown devices are sorted to the top with an amber accent, a one-tap chip marks a device as yours, and a header count ("6 devices · 2 unknown") tells you at a glance whether something is on the network that shouldn't be. Tap a device to open its detail: open ports and services, a guessed device type (PC, phone, printer, camera, NAS…), hostname, MAC and vendor.
+- **Vigie** scans the current subnet (ARP via nmap) and lists every device with its IP, MAC and vendor. Unknown devices are sorted to the top with an amber accent, a one-tap chip marks a device as yours, and a header count ("6 devices · 2 unknown") tells you at a glance whether something is on the network that shouldn't be. Tap a device to open its detail: open ports and services, a guessed device type (PC, phone, printer, camera, NAS…), hostname, MAC and vendor. You can rename any device (saved per network), and the **Watch** mode turns Vigie into a passive monitor: a bettercap MITM of the whole subnet reveals the domains each device contacts, with a persistent, timestamped history kept per network.
 
 ## Legal scope
 
@@ -71,6 +71,7 @@ Click a tile to activate the matching module.
 - **Pwnagotchi**: jayofelony fork in an isolated venv, driven through systemd
 - **Bjorn**: infinition/Bjorn, driven through systemd, live console in the tile
 - **Raton**: in-house WPA cracking engine (aircrack-ng, CPU), staged escalation, GPU export
+- **Vigie**: in-house device radar and traffic monitor (nmap for discovery and port scans, bettercap MITM for per-device domains, persistent per-network history)
 - Automatic detection of the monitor-mode Wi-Fi adapter at launch
 
 ## Roadmap
@@ -81,7 +82,6 @@ Click a tile to activate the matching module.
 - [x] Bjorn module (install, control, live console)
 - [x] Raton module (WPA cracking, 9-stage escalation, GPU export)
 - [x] Live connection indicator (Ethernet / Wi-Fi / Offline)
-- [x] Vigie module (live device radar, mine vs unknown)
+- [x] Vigie module (device radar, per-device recon, naming, and traffic watch via MITM)
 - [ ] Real Wi-Fi join/disconnect from the connection manager (nmcli)
-- [ ] Vigie: per-device traffic / contacted domains (needs MITM)
 - [ ] Carte module (wardriving map)
