@@ -1,0 +1,6 @@
+#!/bin/bash
+# Écrit dans la config de pwnagotchi l'interface réellement en mode monitor,
+# pour qu'il suive la clé Wi-Fi branchée (quel que soit son nom : wlan1, wlan1mon...).
+IFACE=$(iw dev | awk '$1=="Interface"{i=$2} $1=="type"&&$2=="monitor"{print i; exit}')
+[ -n "$IFACE" ] && sed -i -E "s/^[[:space:]]*iface[[:space:]]*=.*/iface = \"$IFACE\"/" /etc/pwnagotchi/config.toml
+exit 0

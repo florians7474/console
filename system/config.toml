@@ -1,4 +1,6 @@
 [main]
+mon_start_cmd = ""
+mon_stop_cmd = ""
 name = "fennec"
 lang = "en"
 iface = "wlan1"

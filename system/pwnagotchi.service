@@ -5,6 +5,7 @@ Wants=bettercap.service
 
 [Service]
 Type=simple
+ExecStartPre=/usr/local/bin/fennec-pwna-iface
 ExecStart=__VENV__/bin/pwnagotchi
 Restart=always
 RestartSec=5
