@@ -15,6 +15,11 @@ enabled = false
 [main.plugins.fix_services]
 enabled = false
 
+[main.plugins.gps]
+enabled = true
+device = "/dev/ttyACM0"
+speed = 9600
+
 [personality]
 advertise = false
 deauth = true

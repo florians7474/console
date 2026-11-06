@@ -18,7 +18,7 @@ The project also serves as a hands-on sandbox for learning offensive security. T
 | **Bjorn** | Network reconnaissance and targeted attacks | ✅ Working |
 | **Raton** | Offline WPA cracking on your own captures | ✅ Working |
 | **Vigie** | Network radar + per-device traffic watch | ✅ Working |
-| **Carte** | Network mapping (wardriving) | 🚧 Planned |
+| **Carte** | Map of captures by GPS location | 🚧 Phase 1 |
 
 The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and opens the allowed-networks manager where you scan for networks and pick the ones you are allowed to test.
 
@@ -28,6 +28,7 @@ The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Off
 - **Bjorn** scans and probes the network the Pi is currently on. The screen names that network and its subnet before you start, so there is no doubt about what is being audited, and its live console streams inside the tile.
 - **Raton** runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known cracked keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-step handoff to GPU cracking. Captures with no usable handshake are flagged and cannot be tested, so a network is never wrongly reported as robust.
 - **Vigie** scans the current subnet (ARP via nmap) and lists every device with its IP, MAC and vendor. Unknown devices are sorted to the top with an amber accent, a one-tap chip marks a device as yours, and a header count ("6 devices · 2 unknown") tells you at a glance whether something is on the network that shouldn't be. Tap a device to open its detail: open ports and services, a guessed device type (PC, phone, printer, camera, NAS…), hostname, MAC and vendor. You can rename any device (saved per network), and the **Watch** mode turns Vigie into a passive monitor: a bettercap MITM of the whole subnet reveals the domains each device contacts, with a persistent, timestamped history kept per network.
+- **Carte** plots captured handshakes on a live map using the position read at capture time (Pwnagotchi's GPS plugin writes a `.gps.json` next to each handshake when a fix is available). Markers are colour-coded by whitelist status, and tapping one adds that network to the allowed list. Phase 1 (geolocating captures) is in; full wardriving comes next.
 
 ## Legal scope
 
@@ -40,7 +41,7 @@ Only use this tool on networks you own or have written permission to test. Any o
 - Raspberry Pi 5
 - 3.5" touchscreen (Waveshare 480x320 reference)
 - USB Wi-Fi adapter with monitor mode (tested with an Alfa AWUS036AXM, MediaTek MT7921AU chipset)
-- Optional: VK-162 USB GPS module (for the upcoming Carte / wardriving module)
+- Optional: VK-162 USB GPS module (for the Carte / wardriving module)
 - microSD card, 32 GB or more, Raspberry Pi OS 64-bit (desktop)
 
 The Pi 5 built-in Wi-Fi does not support monitor mode, so a compatible USB adapter is required. The interface is detected automatically, no adapter name is hardcoded.
@@ -83,5 +84,6 @@ Click a tile to activate the matching module.
 - [x] Raton module (WPA cracking, 9-stage escalation, GPU export)
 - [x] Live connection indicator (Ethernet / Wi-Fi / Offline)
 - [x] Vigie module (device radar, per-device recon, naming, and traffic watch via MITM)
+- [x] Carte module – phase 1 (geolocate captured handshakes on a live map)
 - [ ] Real Wi-Fi join/disconnect from the connection manager (nmcli)
-- [ ] Carte module (wardriving map)
+- [ ] Carte module – phase 2 (full wardriving: map every network, offline tiles)

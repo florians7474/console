@@ -46,6 +46,12 @@ if [ ! -d "$USER_HOME/pwnagotchi-src" ]; then
     git clone https://github.com/jayofelony/pwnagotchi.git "$USER_HOME/pwnagotchi-src"
 fi
 
+# Correctif du plugin GPS : il cherche à remplacer ".pcapng" alors que
+# bettercap enregistre les captures en ".pcap". Sans ce correctif, le plugin
+# écrase le handshake avec le JSON de position au lieu d'écrire un .gps.json
+# à côté. On corrige la source avant l'installation dans le venv.
+sed -i 's/\.pcapng/.pcap/' "$USER_HOME/pwnagotchi-src/pwnagotchi/plugins/default/gps.py"
+
 echo "==> Installation de Pwnagotchi dans le venv (long)..."
 "$VENV/bin/pip" install --prefer-binary "$USER_HOME/pwnagotchi-src"
 "$VENV/bin/pip" install python-prctl
@@ -167,6 +173,12 @@ if [ ! -f /usr/share/wordlists/probable-wpa-top4800.txt ]; then
     sudo wget -O /usr/share/wordlists/probable-wpa-top4800.txt \
         https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/WiFi-WPA/probable-v2-wpa-top4800.txt
 fi
+
+# --- 10. Reconnexion wifi automatique (usage nomade) ---
+echo "==> Mise en place de la reconnexion wifi automatique..."
+sudo mkdir -p /etc/NetworkManager/conf.d
+sudo cp "$SYS/wifi-retry.conf" /etc/NetworkManager/conf.d/wifi-retry.conf
+sudo systemctl reload NetworkManager || true
 
 echo ""
 echo "==> Installation terminée."

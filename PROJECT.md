@@ -42,7 +42,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Raton | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
 | Connexion | Join a whitelisted network (Wi-Fi lock step 2) | Stub only (stores target in memory, no real nmcli yet) |
 | Vigie | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, and live traffic monitoring via bettercap MITM with saved history) |
-| Carte | Wardriving map (WiGLE-style) | To do |
+| Carte | Map of geolocated captures, then wardriving (WiGLE-style) | Phase 1 done (GPS geolocation of handshakes, tested outdoors); phase 2 wardriving to do |
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
 by their tile via systemd services kept disabled at boot (sudoers rules allow
@@ -225,7 +225,18 @@ Editing any project file: nano ~/console/<file>.
   devices (encrypted DNS + QUIC) reveal their resolutions. v1 (device radar) and
   v2 (per-device port scan/type, naming, and traffic watch via MITM with saved
   history) are done.
-- Carte: build the wardriving map (uses the VK-162 GPS)
+- Carte phase 1: done. The Pwnagotchi GPS plugin writes a .gps.json next to each
+  handshake when a fix is available, and the Carte tile plots them (colour-coded
+  by whitelist status, tap to add to the whitelist). The plugin is enabled in
+  config.toml ([main.plugins.gps], device /dev/ttyACM0) and install.sh patches a
+  bug in it (it replaced ".pcapng" while bettercap writes ".pcap", which made it
+  overwrite the handshake instead of writing the .gps.json). Markers sit at the
+  capture position (where the Pi was), not at the access point.
+- Carte phase 2: build the full wardriving map (map every network even without a
+  handshake, via airodump-ng + GPS) and add offline map tiles for nomadic use.
+- Nomadic Wi-Fi reconnection: NetworkManager now retries autoconnect forever
+  (/etc/NetworkManager/conf.d/wifi-retry.conf, installed by install.sh), so the
+  Pi rejoins its network on its own when it comes back in range without a reboot.
 
 ## Known issues
 - Flask runs in debug (debug=True), leaves 2 processes on :5000 ("Address
