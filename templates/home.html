@@ -75,6 +75,21 @@
     .pastille { width:6px; height:6px; border-radius:50%; background:#5a6673; }
     .on .pastille { background:#2ea043; box-shadow:0 0 6px #2ea043; }
     .on .etat { color:#2ea043; }
+
+    .power { padding:6px; background:none; border:none; opacity:.8; }
+    .power:active { opacity:1; }
+    .power svg { width:22px; height:22px; display:block; stroke:#f85149; }
+
+    .pwr-overlay { display:none; position:absolute; inset:0; z-index:60;
+      background:rgba(0,0,0,.72); align-items:center; justify-content:center; }
+    .pwr-box { width:300px; background:#161b22; border:1px solid #30363d; border-radius:16px;
+      padding:20px; display:flex; flex-direction:column; gap:14px; text-align:center; }
+    .pwr-title { font-size:16px; font-weight:700; color:#e6edf3; }
+    .pwr-btns { display:flex; gap:10px; }
+    .pwr-act { flex:1; padding:13px 0; border:none; border-radius:10px; font-size:14px; font-weight:700; color:#fff; }
+    .pwr-reboot { background:#1f6feb; }
+    .pwr-off { background:#da3633; }
+    .pwr-cancel { padding:11px 0; border:1px solid #30363d; border-radius:10px; background:transparent; color:#8b949e; font-size:13px; }
   </style>
 </head>
 <body>
@@ -107,6 +122,11 @@
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
     </a>
+    <button class="power" onclick="document.getElementById('pwrdlg').style.display='flex'" title="Power">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3v9"/><path d="M6.4 6.4a9 9 0 1 0 11.2 0"/>
+      </svg>
+    </button>
   </div>
 
   <div class="grille">
@@ -147,5 +167,26 @@
     </a>
 
   </div>
+
+  <div id="pwrdlg" class="pwr-overlay">
+    <div class="pwr-box">
+      <div class="pwr-title">Power</div>
+      <div class="pwr-btns">
+        <button class="pwr-act pwr-reboot" onclick="doPower('reboot', this)">Reboot</button>
+        <button class="pwr-act pwr-off" onclick="doPower('poweroff', this)">Shut down</button>
+      </div>
+      <button class="pwr-cancel" onclick="document.getElementById('pwrdlg').style.display='none'">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    function doPower(action, btn) {
+      btn.disabled = true;
+      var box = document.querySelector('#pwrdlg .pwr-box');
+      box.innerHTML = '<div class="pwr-title">' +
+        (action === 'reboot' ? 'Rebooting…' : 'Shutting down…') + '</div>';
+      fetch('/power/' + action, { method: 'POST' });
+    }
+  </script>
 </body>
 </html>

@@ -822,6 +822,20 @@ def scan_vider(source):
     sauver_scan([])
     return redirect(url_for("scan", source="direct"))
 
+@app.route("/power/<action>", methods=["POST"])
+def power(action):
+    # Extinction / redémarrage du Pi depuis l'écran (kiosk sans clavier).
+    if action not in ("poweroff", "reboot"):
+        abort(404)
+    try:
+        subprocess.run(
+            ["sudo", "-n", "/usr/bin/systemctl", action],
+            check=True, capture_output=True, timeout=20,
+        )
+    except Exception:
+        pass
+    return ("", 204)
+
 # À la fermeture de Fennec, couper bettercap pour ne pas laisser le réseau
 # sous ARP spoofing (sinon la connexion reste perturbée après l'arrêt).
 atexit.register(vigie_monitor.arreter)
