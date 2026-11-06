@@ -17,17 +17,45 @@
       border:1px solid #30363d; border-radius:8px;
       font-size:20px; line-height:1; padding:7px 11px;
     }
-    .sim {
+    .legende {
       position:absolute; bottom:10px; left:10px; z-index:1000;
-      background:rgba(13,17,23,.8); color:#8b949e; font-size:10px;
-      border:1px solid #30363d; border-radius:20px; padding:4px 9px;
+      background:rgba(13,17,23,.85); color:#c9d1d9; font-size:10px;
+      border:1px solid #30363d; border-radius:20px; padding:4px 10px;
+      display:flex; gap:10px; align-items:center;
     }
+    .legende .pt { display:inline-block; width:8px; height:8px; border-radius:50%;
+      margin-right:4px; vertical-align:middle; }
+    .vide {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      z-index:1000; color:#8b949e; font-size:13px; text-align:center;
+      background:rgba(13,17,23,.9); border:1px solid #30363d; border-radius:12px;
+      padding:14px 18px; max-width:320px; line-height:1.5;
+    }
+    .pop b { color:#e6edf3; }
+    .pop .mono { font-family:ui-monospace,Consolas,monospace; font-size:11px; color:#8b949e; }
+    .pop button {
+      margin-top:8px; width:100%; border:none; background:#2ea043; color:#fff;
+      border-radius:8px; padding:7px 10px; font-size:12px; font-weight:600; cursor:pointer;
+    }
+    .pop .ok { color:#2ea043; font-weight:600; }
+    .pop .ko { color:#da3633; font-size:11px; }
   </style>
 </head>
 <body>
   <a class="retour" href="/">&larr;</a>
   <div id="carte"></div>
-  <div class="sim">simulation &middot; green = allowed</div>
+
+  {% if points %}
+  <div class="legende">
+    <span><span class="pt" style="background:#2ea043"></span>allowed</span>
+    <span><span class="pt" style="background:#d29922"></span>handshake</span>
+    {% if sans_position %}<span>{{ sans_position }} without GPS</span>{% endif %}
+  </div>
+  {% else %}
+  <div class="vide">No geolocated handshake yet.<br>Capture outdoors with a GPS fix to see points here.
+    {% if sans_position %}<br><span style="font-size:11px">({{ sans_position }} handshake(s) captured without a GPS fix)</span>{% endif %}
+  </div>
+  {% endif %}
 
   <script>
     const points = {{ points|tojson }};
@@ -37,16 +65,49 @@
       maxZoom: 19, attribution: '&copy; OpenStreetMap'
     }).addTo(carte);
 
+    const COUL_OK = '#2ea043', COUL_HS = '#d29922';
     const marqueurs = [];
-    points.forEach(p => {
-      const couleur = p.autorise ? '#2ea043' : '#8b949e';
+
+    points.forEach((p, i) => {
+      const couleur = p.autorise ? COUL_OK : COUL_HS;
       const m = L.circleMarker([p.lat, p.lon], {
         radius: 9, color: couleur, weight: 2, fillColor: couleur, fillOpacity: 0.75
       }).addTo(carte);
-      m.bindPopup('<b>' + p.nom + '</b><br>' + p.bssid + '<br>' + p.signal + ' dBm'
-                  + (p.autorise ? '<br><span style="color:#2ea043">allowed</span>' : ''));
+      m.bindPopup(contenuPopup(p, i));
       marqueurs.push(m);
     });
+
+    function contenuPopup(p, i) {
+      let html = '<div class="pop"><b>' + p.nom + '</b><br>'
+               + '<span class="mono">' + p.bssid + '</span>';
+      if (p.autorise) {
+        html += '<br><span class="ok">in whitelist</span>';
+      } else {
+        html += '<button onclick="ajouterListe(' + i + ')">add to whitelist</button>';
+      }
+      return html + '</div>';
+    }
+
+    function ajouterListe(i) {
+      const p = points[i];
+      const m = marqueurs[i];
+      const corps = new URLSearchParams({ nom: p.nom, bssid: p.bssid });
+      fetch('/liste/ajouter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: corps.toString()
+      }).then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        p.autorise = true;
+        m.setStyle({ color: COUL_OK, fillColor: COUL_OK });
+        m.setPopupContent(contenuPopup(p, i));
+      }).catch(() => {
+        m.setPopupContent('<div class="pop"><b>' + p.nom + '</b><br>'
+          + '<span class="mono">' + p.bssid + '</span>'
+          + '<br><span class="ko">add failed, tap again</span>'
+          + '<button onclick="ajouterListe(' + i + ')">retry</button></div>');
+      });
+    }
 
     if (marqueurs.length) {
       carte.fitBounds(L.featureGroup(marqueurs).getBounds().pad(0.3));

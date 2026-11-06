@@ -25,14 +25,6 @@ MODES = {
     "bjorn":      {"nom": "Bjorn",      "classe": "bjorn", "url": None},
 }
 
-RESEAUX_GEO = [
-    {"nom": "Livebox-2A3F", "bssid": "34:27:92:AA:2A:3F", "lat": 48.8566, "lon": 2.3522, "signal": -41},
-    {"nom": "Freebox-Flo",  "bssid": "F4:CA:E5:11:88:0C", "lat": 48.8573, "lon": 2.3510, "signal": -55},
-    {"nom": "SFR_1B20",     "bssid": "68:A3:78:1B:20:9D", "lat": 48.8558, "lon": 2.3541, "signal": -67},
-    {"nom": "Bbox-6E1A",    "bssid": "00:1A:2B:6E:1A:44", "lat": 48.8580, "lon": 2.3533, "signal": -72},
-    {"nom": "orange-FA22",  "bssid": "5C:DC:96:FA:22:10", "lat": 48.8551, "lon": 2.3505, "signal": -80},
-]
-
 # ---------- JSON files ----------
 
 def _charger(fichier):
@@ -612,8 +604,27 @@ def cassage_stop():
 @app.route("/carte")
 def carte():
     deja = {r["bssid"] for r in charger_liste()}
-    points = [dict(p, autorise=(p["bssid"] in deja)) for p in RESEAUX_GEO]
-    return render_template("carte.html", points=points)
+    points = []
+    sans_position = 0
+    for c in lire_handshakes():
+        chemin_gps = os.path.join(HANDSHAKES_DIR, c["fichier"].replace(".pcap", ".gps.json"))
+        try:
+            with open(chemin_gps, "r", encoding="utf-8") as f:
+                g = json.load(f)
+            lat, lon = g.get("Latitude"), g.get("Longitude")
+        except (FileNotFoundError, json.JSONDecodeError):
+            lat = lon = None
+        if lat and lon:
+            points.append({
+                "nom": c["nom"],
+                "bssid": c["bssid"],
+                "lat": lat,
+                "lon": lon,
+                "autorise": c["bssid"] in deja,
+            })
+        else:
+            sans_position += 1
+    return render_template("carte.html", points=points, sans_position=sans_position)
 
 # ---------- Connection ----------
 
