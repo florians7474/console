@@ -1,11 +1,11 @@
-"""Moteur de monitoring Vigie : MITM (bettercap) pour router le trafic par le Pi,
-+ capture SNI/DNS via tshark (le moteur de Wireshark), qui lit le SNI du TLS
-classique (TCP/443) ET du QUIC (UDP/443, HTTP/3) — ce que bettercap ne faisait
-pas. Agrégé par appareil, clé = IP source (donnée directement par tshark).
+"""Vigie monitoring engine: MITM (bettercap) to route the traffic through the Pi,
++ SNI/DNS capture via tshark (the Wireshark engine), which reads the SNI of plain
+TLS (TCP/443) AND of QUIC (UDP/443, HTTP/3) — which bettercap did not do.
+Aggregated per device, key = source IP (given directly by tshark).
 
-Le script sudo /usr/local/bin/fennec-monitor lance bettercap (arp.spoof) puis
-tshark en sortie « champs » tabulés :  ip.src <TAB> sni <TAB> dns
-Une seule colonne de domaine est renseignée par ligne ; on prend la première.
+The sudo script /usr/local/bin/fennec-monitor starts bettercap (arp.spoof) then
+tshark with tab-separated "fields" output:  ip.src <TAB> sni <TAB> dns
+Only one domain column is filled per line; we take the first one.
 """
 import os
 import re
@@ -19,8 +19,8 @@ from collections import deque, OrderedDict
 etat_monitor = {
     "actif": False,
     "depuis": None,
-    "hotes": {},                 # ip -> OrderedDict(domaine -> ts)
-    "brut": deque(maxlen=250),   # dernières lignes brutes (réglage)
+    "hotes": {},                 # ip -> OrderedDict(domain -> ts)
+    "brut": deque(maxlen=250),   # last raw lines (debugging)
 }
 
 _proc = None
@@ -31,7 +31,7 @@ _RE_IP = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
 _IGNORER_DOM = re.compile(r"(\.lan|\.local|\.arpa|\.home|\.internal)$", re.I)
 _RE_PRIVE = re.compile(r"^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|224\.|0\.)")
 _cache_rdns = {}
-_vu_dst = {}   # (src, dst) -> dernier ts, pour éviter de retraiter le flot QUIC
+_vu_dst = {}   # (src, dst) -> last ts, to avoid reprocessing the QUIC flow
 
 
 def _est_prive(ip):
@@ -39,7 +39,7 @@ def _est_prive(ip):
 
 
 def _rdns(ip):
-    """Reverse DNS d'une IP de destination (mis en cache), sinon l'IP brute."""
+    """Reverse DNS of a destination IP (cached), else the raw IP."""
     if ip in _cache_rdns:
         return _cache_rdns[ip]
     nom = None
@@ -61,7 +61,7 @@ def _noter(ip, domaine):
 
 
 def _traiter(ligne):
-    # Champs tshark : ip.src <TAB> ip.dst <TAB> sni <TAB> dns
+    # tshark fields: ip.src <TAB> ip.dst <TAB> sni <TAB> dns
     champs = ligne.rstrip("\n").split("\t")
     while len(champs) < 4:
         champs.append("")
@@ -69,7 +69,7 @@ def _traiter(ligne):
     dst = champs[1].strip()
     sni = champs[2].strip().split(",")[0].strip()
     dns = champs[3].strip().split(",")[0].strip()
-    # La source doit être un appareil local (écarte les paquets réponse serveur->client)
+    # The source must be a local device (filters out server->client reply packets)
     if not _RE_IP.match(src) or not _est_prive(src):
         return
     dom = (sni or dns).lower().rstrip(".")
@@ -78,12 +78,12 @@ def _traiter(ligne):
             return
         _noter(src, dom)
         return
-    # Ni SNI ni DNS (handshake chiffré, ex. QUIC/ECH) : on note la destination.
+    # Neither SNI nor DNS (encrypted handshake, e.g. QUIC/ECH): record the destination.
     if not _RE_IP.match(dst) or _est_prive(dst):
         return
     cle = (src, dst)
     now = time.time()
-    if now - _vu_dst.get(cle, 0) < 3:   # anti-flood : 1 fois / 3s par (src,dst)
+    if now - _vu_dst.get(cle, 0) < 3:   # anti-flood: once / 3s per (src,dst)
         return
     _vu_dst[cle] = now
     if len(_vu_dst) > 5000:
@@ -104,7 +104,7 @@ def _lire(proc):
 
 
 def demarrer(prefixe=None):
-    """Lance le script (bettercap + tshark) et le thread de lecture."""
+    """Start the script (bettercap + tshark) and the reader thread."""
     global _proc, _thread
     if etat_monitor["actif"]:
         return True
@@ -129,7 +129,7 @@ def demarrer(prefixe=None):
 
 
 def arreter():
-    """Coupe bettercap + tshark proprement (tout le groupe de processus)."""
+    """Stop bettercap + tshark cleanly (the whole process group)."""
     global _proc
     p = _proc
     if p and p.poll() is None:
@@ -150,7 +150,7 @@ def arreter():
 
 
 def horodates(cles):
-    """Domaines + dernier timestamp pour une ou plusieurs clés (IP)."""
+    """Domains + last timestamp for one or more keys (IP)."""
     out = {}
     with _verrou:
         for cle in cles:
@@ -161,7 +161,7 @@ def horodates(cles):
 
 
 def instantane():
-    """Vue JSON-able : actif + domaines par appareil + dernières lignes brutes."""
+    """JSON-able view: active + domains per device + last raw lines."""
     with _verrou:
         hotes = {ip: [k for k, _ in sorted(d.items(), key=lambda kv: kv[1], reverse=True)]
                  for ip, d in etat_monitor["hotes"].items()}

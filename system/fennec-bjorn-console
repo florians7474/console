@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Alimente la console web de Bjorn : recopie en direct les logs de modules
-# dans temp_log.txt, que la page web de Bjorn affiche.
+# Feeds Bjorn's web console: live-copies the module logs into temp_log.txt,
+# which Bjorn's web page displays.
 LOGDIR="__HOME__/Bjorn/data/logs"
 OUT="$LOGDIR/temp_log.txt"
 tail -n 0 -F "$LOGDIR"/*.log 2>/dev/null | while IFS= read -r line; do

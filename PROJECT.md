@@ -66,6 +66,10 @@ coded in-house.
   native popup (which is unusable on the kiosk touchscreen).
 - Bjorn's stopped screen names the network and /24 subnet it will scan (or asks
   to connect when offline), so the target is obvious before pressing Start.
+- Power button (top-right of the header): an in-page dialog offers Reboot and
+  Shut down, posted to /power/<action>, which runs sudo systemctl reboot|poweroff
+  (exact-path rules in fennec.sudoers). Lets the kiosk be powered off from the
+  touchscreen, no keyboard or SSH needed.
 
 ## Vigie (device radar)
 - Real ARP scan of the current /24 via nmap -sn, run as root by a dedicated

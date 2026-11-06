@@ -6,7 +6,7 @@
   <title>Fennec</title>
   <link rel="icon" type="image/png" href="/static/fennec.png">
   <script>
-    // Splash uniquement au demarrage de l'appli, pas a chaque retour a l'accueil.
+    // Splash only on app startup, not on every return to the home screen.
     try {
       if (sessionStorage.getItem('fennec_booted')) {
         document.documentElement.classList.add('deja');

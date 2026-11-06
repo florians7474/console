@@ -136,7 +136,7 @@
       document.getElementById('ports').innerHTML = '<div class="vide">Port scan failed.</div>';
     });
 
-    // --- Traffic (historique persistant + live, horodaté) ---
+    // --- Traffic (persistent history + live, timestamped) ---
     function depuis(t){
       var s = Math.max(0, Math.floor(Date.now()/1000 - t));
       if(s < 60) return s + 's ago';
@@ -178,7 +178,7 @@
         .then(function(j){
           var newNom = j.nom || VENDOR || 'Unknown device';
           document.getElementById('titre').textContent = newNom;
-          // met à jour le cache de la liste pour que le nom apparaisse au retour, sans rescan
+          // update the list cache so the name shows on return, without a rescan
           try {
             var c = JSON.parse(sessionStorage.getItem('vigie_devices') || '[]');
             c.forEach(function(d){

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Lance pwngrid sur l'interface réellement en mode monitor (mise en place par bettercap).
+# Start pwngrid on the interface actually in monitor mode (set up by bettercap).
 
 IFACE=$(iw dev | awk '$1=="Interface"{i=$2} $1=="type"&&$2=="monitor"{print i; exit}')
 
 if [ -z "$IFACE" ]; then
-    echo "Aucune interface en mode monitor trouvée."
+    echo "No interface in monitor mode found."
     exit 1
 fi
 

@@ -53,7 +53,7 @@
     .chip.pi  { background:#10303a; color:#28c0d4; border:1px solid #1d5663; cursor:default; }
     .vide { color:#8b949e; font-size:13px; text-align:center; margin-top:40px; line-height:1.7; }
 
-    /* Animation radar pendant le scan */
+    /* Radar animation during the scan */
     .scanning { display:flex; flex-direction:column; align-items:center; justify-content:center;
                 height:100%; gap:16px; }
     .radar { width:96px; height:96px; border-radius:50%; position:relative;
@@ -189,12 +189,12 @@
         .catch(function(){})
         .finally(function(){ b.disabled = false; });
     }
-    // état courant du monitoring (persiste côté serveur entre les pages)
+    // current monitoring state (persisted server-side across pages)
     fetch('/vigie/monitor/data').then(function(r){ return r.json(); })
       .then(function(j){ monitoring = !!j.actif; majWatch(); }).catch(function(){});
 
-    // Au retour (depuis une fiche), on réaffiche le dernier scan mémorisé,
-    // sans relancer : c'est à l'utilisateur de cliquer « Rescan ».
+    // On return (from a detail view), re-display the last saved scan without
+    // re-running it: it's up to the user to click "Rescan".
     var memo = charger();
     if(memo){ devices = memo; rendre(); } else { scanner(); }
   </script>

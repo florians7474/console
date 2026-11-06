@@ -51,7 +51,7 @@ def sauver_miens(ids):
     _sauver(FICHIER_MIENS, ids)
 
 def charger_scan():
-    return _charger(FICHIER_SCAN)   # dernier scan direct mémorisé
+    return _charger(FICHIER_SCAN)   # last saved direct scan
 
 def sauver_scan(reseaux):
     _sauver(FICHIER_SCAN, reseaux)
@@ -129,7 +129,7 @@ def pwna_ui():
         abort(503)
 
 def etat_connexion():
-    """Vraie connexion réseau du Pi : ethernet, wifi (+SSID) ou rien."""
+    """The Pi's real network connection: ethernet, wifi (+SSID) or none."""
     try:
         r = subprocess.run(
             ["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION", "device", "status"],
@@ -154,7 +154,7 @@ def etat_connexion():
     return {"type": None, "nom": "Offline"}
 
 def ip_locale():
-    """Première IPv4 non-loopback du Pi, ou None."""
+    """The Pi's first non-loopback IPv4, or None."""
     try:
         r = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=5)
     except Exception:
@@ -165,12 +165,12 @@ def ip_locale():
     return None
 
 def sous_reseau_local():
-    """Sous-réseau /24 du Pi (ex. 192.168.1.0/24), ou None."""
+    """The Pi's /24 subnet (e.g. 192.168.1.0/24), or None."""
     ip = ip_locale()
     return ".".join(ip.split(".")[:3]) + ".0/24" if ip else None
 
 def passerelle_ip():
-    """IP de la passerelle par défaut (la box), ou None."""
+    """Default gateway IP (the router), or None."""
     try:
         r = subprocess.run(["ip", "route"], capture_output=True, text=True, timeout=5)
     except Exception:
@@ -179,7 +179,7 @@ def passerelle_ip():
     return m.group(1) if m else None
 
 def scan_reseau():
-    """Appareils du LAN via nmap -sn (script sudo dédié). IP, MAC, constructeur."""
+    """LAN devices via nmap -sn (dedicated sudo script). IP, MAC, vendor."""
     try:
         r = subprocess.run(
             ["sudo", "-n", "/usr/local/bin/fennec-netscan"],
@@ -205,7 +205,7 @@ def scan_reseau():
     return appareils
 
 def appareils_vigie():
-    """Liste enrichie pour Vigie : type, 'à moi', inconnu ; inconnus en tête."""
+    """Enriched list for Vigie: type, 'mine', unknown; unknowns first."""
     mienne = ip_locale()
     passerelle = passerelle_ip()
     miens = set(charger_miens())
@@ -226,7 +226,7 @@ def appareils_vigie():
             "mien": mien,
             "inconnu": inconnu,
         })
-    # Inconnus d'abord, puis par IP (ordre numérique sur les octets)
+    # Unknowns first, then by IP (numeric order on the octets)
     def cle_ip(d):
         try:
             return tuple(int(x) for x in d["ip"].split("."))
@@ -240,7 +240,7 @@ def appareils_vigie():
 _dernier_scan = {}
 
 def arp_mac(ip):
-    """MAC d'une IP depuis le cache ARP (sans re-scanner), ou None."""
+    """MAC of an IP from the ARP cache (without re-scanning), or None."""
     try:
         r = subprocess.run(["ip", "neigh", "show", ip],
                            capture_output=True, text=True, timeout=5)
@@ -250,7 +250,7 @@ def arp_mac(ip):
         return None
 
 def device_pour(ip):
-    """Construit la fiche d'un appareil pour une IP, même hors du dernier scan."""
+    """Build a device detail for an IP, even outside the last scan."""
     mac = arp_mac(ip)
     pi = (ip == ip_locale())
     routeur = (ip == passerelle_ip())
@@ -273,7 +273,7 @@ PORTS_VIGIE = ("21,22,23,25,53,80,110,135,139,143,443,445,515,554,587,631,993,"
                "37777,49152")
 
 def scan_ports(ip):
-    """Ports TCP ouverts (liste ciblée, connect scan sans root, rapide)."""
+    """Open TCP ports (targeted list, rootless connect scan, fast)."""
     if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip or ""):
         return []
     try:
@@ -292,7 +292,7 @@ def scan_ports(ip):
     return ports
 
 def deviner_type(ports, vendor):
-    """Devine le type d'appareil à partir des ports ouverts, puis du constructeur."""
+    """Guess the device type from the open ports, then the vendor."""
     svc = {p["port"] for p in ports}
     if 9100 in svc or 631 in svc:
         return "Printer"
@@ -313,10 +313,10 @@ def deviner_type(ports, vendor):
         return "Raspberry Pi"
     return "Unknown"
 
-# ---------- Vigie : identité réseau, noms persos, historique de trafic ----------
+# ---------- Vigie: network identity, custom names, traffic history ----------
 
 def id_reseau():
-    """Identifiant stable du réseau courant : MAC de la box, sinon le sous-réseau."""
+    """Stable id of the current network: the router's MAC, else the subnet."""
     pg = passerelle_ip()
     if pg:
         try:
@@ -330,7 +330,7 @@ def id_reseau():
     return sous_reseau_local() or "default"
 
 def nom_perso(mac):
-    """Nom donné par l'utilisateur à un appareil (ce réseau), ou None."""
+    """User-given name for a device (this network), or None."""
     if not mac:
         return None
     noms = _charger(FICHIER_NOMS)
@@ -351,7 +351,7 @@ def definir_nom(mac, nom):
         noms[rid].pop(mac.upper(), None)
     _sauver(FICHIER_NOMS, noms)
 
-# Historique de trafic gardé en mémoire, écrit sur disque de temps en temps.
+# Traffic history kept in memory, flushed to disk from time to time.
 _hist = None
 _hist_dirty = False
 _hist_last = 0.0
@@ -374,7 +374,7 @@ def _hist_flush(force=False):
     _hist_last = time.time()
 
 def fusionner_trafic(mac, live):
-    """Fusionne les domaines live (dict domaine->ts) dans l'historique de l'appareil."""
+    """Merge the live domains (dict domain->ts) into the device history."""
     global _hist_dirty
     if not mac:
         return dict(live)
@@ -391,7 +391,7 @@ def fusionner_trafic(mac, live):
 @app.route("/")
 def accueil():
     mode_actif = etat["mode_actif"]
-    # Raton tourne dans un thread, pas un service : la pastille suit l'état réel du moteur.
+    # Raton runs in a thread, not a service: the dot follows the engine's real state.
     if mode_actif == "cassage" and not raton_engine.etat_cassage.get("actif"):
         mode_actif = None
         etat["mode_actif"] = None
@@ -405,7 +405,7 @@ HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
 _hs_cache = {}
 
 def capture_a_handshake(fichier):
-    """Présence d'un handshake dans une capture, avec cache par fichier (mtime+taille)."""
+    """Whether a capture holds a handshake, cached per file (mtime+size)."""
     chemin = os.path.join(HANDSHAKES_DIR, fichier)
     try:
         st = os.stat(chemin)
@@ -480,8 +480,8 @@ def mode(nom):
         deja = {r["bssid"] for r in charger_liste()}
         captures = lire_handshakes()
         for cap in captures:
-            # On ne teste la présence du handshake que pour les réseaux autorisés
-            # (les seuls qui affichent un bouton Test), pour éviter des scans inutiles.
+            # Only check for a handshake on allowed networks (the only ones that
+            # show a Test button), to avoid useless scans.
             cap["handshake"] = cap["bssid"] in deja and capture_a_handshake(cap["fichier"])
         return render_template("cassage.html", captures=captures, deja=deja)
 
@@ -509,7 +509,7 @@ def mode(nom):
 def basculer(nom):
     if nom not in MODES:
         return redirect(url_for("accueil"))
-    if vigie_monitor.etat_monitor["actif"]:   # un autre mode démarre : couper le monitoring Vigie
+    if vigie_monitor.etat_monitor["actif"]:   # another mode starts: stop Vigie monitoring
         vigie_monitor.arreter()
     actuel = etat["mode_actif"]
     if actuel == "vigie":
@@ -532,7 +532,7 @@ def cassage_tester(bssid):
     capture = next((c for c in lire_handshakes() if c["bssid"] == bssid), None)
     if not capture:
         return redirect(url_for("mode", nom="cassage"))
-    # Raton prend la main : couper les modes qui tournent (Pwnagotchi / Bjorn / Vigie)
+    # Raton takes over: stop the running modes (Pwnagotchi / Bjorn / Vigie)
     if est_actif("pwnagotchi"):
         arreter("pwnagotchi")
     if est_actif("bjorn"):
@@ -691,7 +691,7 @@ def vigie_ports(ip):
 
 @app.route("/vigie/monitor/start")
 def vigie_monitor_start():
-    # Le monitoring prend la main : couper les autres modes actifs.
+    # Monitoring takes over: stop the other active modes.
     if etat["mode_actif"] in SERVICES:
         arreter(etat["mode_actif"])
     if raton_engine.etat_cassage.get("actif"):
@@ -824,7 +824,7 @@ def scan_vider(source):
 
 @app.route("/power/<action>", methods=["POST"])
 def power(action):
-    # Extinction / redémarrage du Pi depuis l'écran (kiosk sans clavier).
+    # Power off / reboot the Pi from the screen (keyboard-less kiosk).
     if action not in ("poweroff", "reboot"):
         abort(404)
     try:
@@ -836,8 +836,8 @@ def power(action):
         pass
     return ("", 204)
 
-# À la fermeture de Fennec, couper bettercap pour ne pas laisser le réseau
-# sous ARP spoofing (sinon la connexion reste perturbée après l'arrêt).
+# On Fennec shutdown, stop bettercap so the network is not left under ARP
+# spoofing (otherwise the connection stays disrupted after exit).
 atexit.register(vigie_monitor.arreter)
 
 if __name__ == "__main__":

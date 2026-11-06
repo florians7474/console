@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Scan ARP du sous-réseau local : liste les appareils (IP, MAC, constructeur).
-# Lancé en root (via sudo) pour que nmap récupère les adresses MAC.
+# ARP scan of the local subnet: lists devices (IP, MAC, vendor).
+# Runs as root (via sudo) so nmap can retrieve MAC addresses.
 ip=$(hostname -I | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | grep -v '^127\.' | head -n1)
 [ -z "$ip" ] && exit 0
 sous=$(echo "$ip" | cut -d. -f1-3).0/24

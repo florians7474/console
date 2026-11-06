@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Monitoring Vigie : MITM (bettercap arp.spoof de TOUT le sous-réseau) pour
-# router le trafic par le Pi, + tshark pour extraire le SNI (TLS), les requêtes
-# DNS, et la destination des connexions chiffrées (QUIC). Lancé en root.
+# Vigie monitoring: MITM (bettercap arp.spoof of the WHOLE subnet) to route the
+# traffic through the Pi, + tshark to extract the SNI (TLS), DNS queries, and the
+# destination of encrypted connections (QUIC). Runs as root.
 iface=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'dev \K\S+' | head -n1)
 [ -z "$iface" ] && iface=$(ip route 2>/dev/null | grep -oP 'default .*dev \K\S+' | head -n1)
 [ -z "$iface" ] && exit 1
@@ -10,8 +10,8 @@ ip4=$(ip -o -4 addr show dev "$iface" 2>/dev/null | grep -oP 'inet \K[0-9.]+' | 
 sous=""
 [ -n "$ip4" ] && sous="$(echo "$ip4" | cut -d. -f1-3).0/24"
 
-# bettercap : ARP spoof de tout le sous-réseau (cible explicite = la /24, pour
-# spoofer même un appareil endormi au moment du scan), sans sniff.
+# bettercap: ARP spoof of the whole subnet (explicit target = the /24, to spoof
+# even a device that was asleep during the scan), without sniff.
 if [ -n "$sous" ]; then
   bettercap -iface "$iface" -no-colors \
     -eval "set arp.spoof.fullduplex true; set arp.spoof.targets $sous; net.probe on; arp.spoof on" >/dev/null 2>&1 &
@@ -23,8 +23,8 @@ BETTER=$!
 trap 'kill "$BETTER" 2>/dev/null' EXIT INT TERM
 sleep 1
 
-# tshark : ClientHello TLS (SNI), connexions QUIC (UDP/443 -> destination), et
-# requêtes DNS en clair. Une ligne par événement :
+# tshark: TLS ClientHello (SNI), QUIC connections (UDP/443 -> destination), and
+# cleartext DNS queries. One line per event:
 #   ip.src <TAB> ip.dst <TAB> sni <TAB> dns
 tshark -i "$iface" -l -n -Q \
   -Y 'tls.handshake.type == 1 || udp.port == 443 || (dns.flags.response == 0 && dns.qry.name)' \

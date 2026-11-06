@@ -182,7 +182,7 @@ ETAGES = [
 ]
 
 def a_un_handshake(pcap, bssid=None):
-    """True si la capture contient au moins un handshake WPA."""
+    """True if the capture holds at least one WPA handshake."""
     try:
         r = subprocess.run(
             ["aircrack-ng", pcap],

@@ -1,5 +1,5 @@
 
-# --- Fennec : lance l'affichage kiosk au login auto sur tty1 ---
+# --- Fennec: start the kiosk display on tty1 auto-login ---
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
   exec startx -- vt1
 fi

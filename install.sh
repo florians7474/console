@@ -1,27 +1,27 @@
 #!/bin/bash
 #
-# Fennec - Installation complète sur Raspberry Pi OS (64-bit, Bookworm/Trixie).
-# Installe Fennec, Pwnagotchi (fork jayofelony), bettercap et pwngrid,
-# et met en place les services systemd pilotés par le lanceur.
+# Fennec - Full install on Raspberry Pi OS (64-bit, Bookworm/Trixie).
+# Installs Fennec, Pwnagotchi (jayofelony fork), bettercap and pwngrid,
+# and sets up the systemd services driven by the launcher.
 #
-# Usage :  cd ~/console && ./install.sh
+# Usage:  cd ~/fennec && ./install.sh
 #
 set -e
 
-# --- Repères ---
-REPO="$(cd "$(dirname "$0")" && pwd)"      # dossier du dépôt (où est ce script)
-SYS="$REPO/system"                         # fichiers système modèles
+# --- Markers ---
+REPO="$(cd "$(dirname "$0")" && pwd)"      # repo folder (where this script lives)
+SYS="$REPO/system"                         # system file templates
 USER_NAME="$(whoami)"
 USER_HOME="$HOME"
 VENV="$USER_HOME/pwnagotchi-venv"
 
-echo "==> Fennec : installation pour l'utilisateur '$USER_NAME'"
+echo "==> Fennec: installing for user '$USER_NAME'"
 
-# --- 1. Paquets système ---
-echo "==> Installation des paquets apt..."
+# --- 1. System packages ---
+echo "==> Installing apt packages..."
 sudo apt update
-# tshark (Vigie) : on capture en root via sudo, pas besoin du setuid non-root
-# -> on préremplit la question debconf pour éviter l'invite interactive.
+# tshark (Vigie): we capture as root via sudo, no need for the non-root setuid
+# -> preseed the debconf question to avoid the interactive prompt.
 echo "wireshark-common wireshark-common/install-setuid boolean false" | sudo debconf-set-selections
 sudo DEBIAN_FRONTEND=noninteractive apt install -y \
     git python3-venv python3-dev python3-flask aircrack-ng bettercap golang \
@@ -30,36 +30,36 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y \
     john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev \
     chromium xserver-xorg xinit xserver-xorg-legacy
 
-# --- 1b. Activation du SPI (requis par l'écran e-Paper de Bjorn) ---
-# Sans SPI, /dev/spidev0.0 n'existe pas et Bjorn plante à l'initialisation de
-# l'écran. Prend effet au prochain redémarrage.
-echo "==> Activation du SPI..."
+# --- 1b. Enable SPI (required by Bjorn's e-paper display) ---
+# Without SPI, /dev/spidev0.0 does not exist and Bjorn crashes on display init.
+# Takes effect on the next reboot.
+echo "==> Enabling SPI..."
 sudo raspi-config nonint do_spi 0 || true
 
-# --- 2. Environnement Python (venv) + Pwnagotchi ---
+# --- 2. Python environment (venv) + Pwnagotchi ---
 if [ ! -d "$VENV" ]; then
-    echo "==> Création du venv Python..."
+    echo "==> Creating the Python venv..."
     python3 -m venv "$VENV"
 fi
 
 if [ ! -d "$USER_HOME/pwnagotchi-src" ]; then
-    echo "==> Clonage de Pwnagotchi (fork jayofelony)..."
+    echo "==> Cloning Pwnagotchi (jayofelony fork)..."
     git clone https://github.com/jayofelony/pwnagotchi.git "$USER_HOME/pwnagotchi-src"
 fi
 
-# Correctif du plugin GPS : il cherche à remplacer ".pcapng" alors que
-# bettercap enregistre les captures en ".pcap". Sans ce correctif, le plugin
-# écrase le handshake avec le JSON de position au lieu d'écrire un .gps.json
-# à côté. On corrige la source avant l'installation dans le venv.
+# GPS plugin fix: it tries to replace ".pcapng" while bettercap saves captures
+# as ".pcap". Without this fix the plugin overwrites the handshake with the
+# position JSON instead of writing a .gps.json next to it. Patch the source
+# before installing it into the venv.
 sed -i 's/\.pcapng/.pcap/' "$USER_HOME/pwnagotchi-src/pwnagotchi/plugins/default/gps.py"
 
-echo "==> Installation de Pwnagotchi dans le venv (long)..."
+echo "==> Installing Pwnagotchi into the venv (long)..."
 "$VENV/bin/pip" install --prefer-binary "$USER_HOME/pwnagotchi-src"
 "$VENV/bin/pip" install python-prctl
 
-# --- 3. Compilation de pwngrid ---
+# --- 3. Build pwngrid ---
 if [ ! -f /usr/local/bin/pwngrid ]; then
-    echo "==> Compilation de pwngrid..."
+    echo "==> Building pwngrid..."
     if [ ! -d "$USER_HOME/pwngrid-src" ]; then
         git clone https://github.com/jayofelony/pwngrid.git "$USER_HOME/pwngrid-src"
     fi
@@ -67,20 +67,20 @@ if [ ! -f /usr/local/bin/pwngrid ]; then
     sudo cp "$USER_HOME/pwngrid-src/build/pwngrid" /usr/local/bin/
 fi
 
-# --- 4. Mot de passe bettercap généré ---
+# --- 4. Generated bettercap password ---
 BC_PASS="$(openssl rand -hex 12)"
-echo "==> Mot de passe bettercap généré."
+echo "==> bettercap password generated."
 
-# --- 5. Config Pwnagotchi + caplet ---
-echo "==> Mise en place de la config Pwnagotchi..."
+# --- 5. Pwnagotchi config + caplet ---
+echo "==> Setting up the Pwnagotchi config..."
 sudo mkdir -p /etc/pwnagotchi
 sudo sed "s/__BETTERCAP_PASS__/$BC_PASS/" "$SYS/config.toml" \
     | sudo tee /etc/pwnagotchi/config.toml > /dev/null
 sudo sed "s/__BETTERCAP_PASS__/$BC_PASS/" "$SYS/pwnagotchi-auto.cap" \
     | sudo tee /etc/pwnagotchi/pwnagotchi-auto.cap > /dev/null
 
-# --- 6. Scripts de lancement ---
-echo "==> Installation des scripts de lancement..."
+# --- 6. Launcher scripts ---
+echo "==> Installing the launcher scripts..."
 sudo cp "$SYS/fennec-bettercap" /usr/local/bin/fennec-bettercap
 sudo cp "$SYS/fennec-pwngrid"   /usr/local/bin/fennec-pwngrid
 sudo cp "$SYS/fennec-clear-handshakes" /usr/local/bin/fennec-clear-handshakes
@@ -89,60 +89,60 @@ sudo cp "$SYS/fennec-monitor" /usr/local/bin/fennec-monitor
 sudo cp "$SYS/fennec-pwna-iface" /usr/local/bin/fennec-pwna-iface
 sudo chmod +x /usr/local/bin/fennec-bettercap /usr/local/bin/fennec-pwngrid /usr/local/bin/fennec-clear-handshakes /usr/local/bin/fennec-netscan /usr/local/bin/fennec-monitor /usr/local/bin/fennec-pwna-iface
 
-# --- 7. Services systemd (avec substitution du venv) ---
-echo "==> Installation des services systemd..."
+# --- 7. systemd services (with venv substitution) ---
+echo "==> Installing the systemd services..."
 for svc in bettercap pwngrid-peer pwnagotchi; do
     sudo sed "s#__VENV__#$VENV#g" "$SYS/$svc.service" \
         | sudo tee "/etc/systemd/system/$svc.service" > /dev/null
 done
 sudo systemctl daemon-reload
 
-# --- 8. Règle sudoers (avec substitution de l'utilisateur) ---
-echo "==> Mise en place des droits sudo pour Fennec..."
+# --- 8. sudoers rule (with user substitution) ---
+echo "==> Setting up Fennec's sudo rights..."
 sudo sed "s/__USER__/$USER_NAME/" "$SYS/fennec.sudoers" \
     | sudo tee /etc/sudoers.d/fennec > /dev/null
 sudo chmod 440 /etc/sudoers.d/fennec
 
-# --- Bjorn (scan/attaque LAN) ---
-echo "==> Installation de Bjorn..."
+# --- Bjorn (LAN scan/attack) ---
+echo "==> Installing Bjorn..."
 
-# Code source (infinition/Bjorn)
+# Source code (infinition/Bjorn)
 if [ ! -d "$USER_HOME/Bjorn" ]; then
     git clone https://github.com/infinition/Bjorn.git "$USER_HOME/Bjorn"
 fi
 
-# Patch serveur web Bjorn : garder le port 8000 et autoriser la réutilisation
-# d'adresse. Sans ça, un Stop/Start laisse le port en TIME_WAIT, Bjorn saute
-# sur 8001 et la page devient injoignable depuis la tuile Fennec.
+# Bjorn web server patch: keep port 8000 and allow address reuse. Without this,
+# a Stop/Start leaves the port in TIME_WAIT, Bjorn jumps to 8001 and the page
+# becomes unreachable from the Fennec tile.
 if ! grep -q "allow_reuse_address = True" "$USER_HOME/Bjorn/webapp.py"; then
     sed -i '/^import socketserver$/a socketserver.TCPServer.allow_reuse_address = True' "$USER_HOME/Bjorn/webapp.py"
 fi
 sed -i 's/^\( *\)self.port += 1/\1__import__("time").sleep(2)/' "$USER_HOME/Bjorn/webapp.py"
 
-# venv dédié + dépendances Python
+# Dedicated venv + Python dependencies
 if [ ! -d "$USER_HOME/bjorn-venv" ]; then
     python3 -m venv "$USER_HOME/bjorn-venv"
 fi
 "$USER_HOME/bjorn-venv/bin/pip" install --prefer-binary -r "$SYS/bjorn-requirements.txt"
 
-# Script de la console web (chemin adapté à l'utilisateur)
+# Web console script (path adapted to the user)
 sudo sed "s#__HOME__#$USER_HOME#g" "$SYS/fennec-bjorn-console" \
     | sudo tee /usr/local/bin/fennec-bjorn-console > /dev/null
 sudo chmod +x /usr/local/bin/fennec-bjorn-console
 
-# Services systemd Bjorn (chemin adapté)
+# Bjorn systemd services (path adapted)
 for svc in bjorn bjorn-console; do
     sudo sed "s#__HOME__#$USER_HOME#g" "$SYS/$svc.service" \
         | sudo tee "/etc/systemd/system/$svc.service" > /dev/null
 done
 sudo systemctl daemon-reload
 
-# --- 9. Raton : moteur de cassage WPA (routerkeygen + wordlists) ---
-echo "==> Mise en place de Raton (cassage WPA)..."
+# --- 9. Raton: WPA cracking engine (routerkeygen + wordlists) ---
+echo "==> Setting up Raton (WPA cracking)..."
 
-# routerkeygen-cli (cles d'usine) : pas dans apt, compile depuis les sources
+# routerkeygen-cli (factory keys): not in apt, build from source
 if [ ! -f /usr/local/bin/routerkeygen-cli ]; then
-    echo "==> Compilation de routerkeygen-cli..."
+    echo "==> Building routerkeygen-cli..."
     if [ ! -d "$USER_HOME/routerkeygen-src" ]; then
         git clone https://github.com/routerkeygen/routerkeygenPC.git "$USER_HOME/routerkeygen-src"
     fi
@@ -150,10 +150,10 @@ if [ ! -f /usr/local/bin/routerkeygen-cli ]; then
     sudo cp "$USER_HOME/routerkeygen-src/cli/routerkeygen-cli" /usr/local/bin/
 fi
 
-# Wordlists (dans /usr/share/wordlists)
+# Wordlists (in /usr/share/wordlists)
 sudo mkdir -p /usr/share/wordlists
 
-# rockyou (téléchargé depuis SecLists, extrait dans /usr/share/wordlists)
+# rockyou (downloaded from SecLists, extracted into /usr/share/wordlists)
 if [ ! -f /usr/share/wordlists/rockyou.txt ]; then
     sudo wget -O /tmp/rockyou.txt.tar.gz \
         https://github.com/danielmiessler/SecLists/raw/master/Passwords/Leaked-Databases/rockyou.txt.tar.gz
@@ -163,62 +163,62 @@ if [ ! -f /usr/share/wordlists/rockyou.txt ]; then
     sudo chmod 644 /usr/share/wordlists/rockyou.txt
 fi
 
-# 10k mots de passe courants (SecLists)
+# 10k common passwords (SecLists)
 if [ ! -f /usr/share/wordlists/10k-common.txt ]; then
     sudo wget -O /usr/share/wordlists/10k-common.txt \
         https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/10k-most-common.txt
 fi
 
-# vraies cles WPA cassees (SecLists)
+# real cracked WPA keys (SecLists)
 if [ ! -f /usr/share/wordlists/probable-wpa-top4800.txt ]; then
     sudo wget -O /usr/share/wordlists/probable-wpa-top4800.txt \
         https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/WiFi-WPA/probable-v2-wpa-top4800.txt
 fi
 
-# --- 10. Reconnexion wifi automatique (usage nomade) ---
-echo "==> Mise en place de la reconnexion wifi automatique..."
+# --- 10. Automatic Wi-Fi reconnection (nomadic use) ---
+echo "==> Setting up automatic Wi-Fi reconnection..."
 sudo mkdir -p /etc/NetworkManager/conf.d
 sudo cp "$SYS/wifi-retry.conf" /etc/NetworkManager/conf.d/wifi-retry.conf
 sudo systemctl reload NetworkManager || true
 
-# --- 11. Fennec en service systemd ---
-# Fennec tourne en permanence (le kiosk et l'écran tactile s'y connectent).
-echo "==> Installation du service Fennec..."
+# --- 11. Fennec as a systemd service ---
+# Fennec runs continuously (the kiosk and the touchscreen connect to it).
+echo "==> Installing the Fennec service..."
 sudo sed -e "s/__USER__/$USER_NAME/g" -e "s#__REPO__#$REPO#g" "$SYS/fennec.service" \
     | sudo tee /etc/systemd/system/fennec.service > /dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable fennec
 
-# --- 12. Écran tactile Waveshare 3.5" (C) + affichage kiosk ---
-# Écran de référence 480x320 sur le port GPIO, piloté par l'overlay
-# device-tree waveshare35c (pilote ILI9486 sur /dev/fb0, pas de fbcp car aucun
-# HDMI n'est branché). L'affichage de Fennec se fait en kiosk Chromium lancé au
-# démarrage : login auto sur la console tty1 -> startx -> ~/.xinitrc -> chromium.
-echo "==> Configuration de l'écran tactile et du kiosk..."
+# --- 12. Waveshare 3.5" (C) touchscreen + kiosk display ---
+# Reference 480x320 screen on the GPIO header, driven by the device-tree overlay
+# waveshare35c (ILI9486 driver on /dev/fb0, no fbcp since no HDMI is connected).
+# Fennec is displayed in a Chromium kiosk started at boot: auto-login on the
+# tty1 console -> startx -> ~/.xinitrc -> chromium.
+echo "==> Configuring the touchscreen and the kiosk..."
 
-# a) Overlay de l'écran dans le config.txt de boot (idempotent)
+# a) Screen overlay in the boot config.txt (idempotent)
 BOOTCFG=/boot/firmware/config.txt
 [ -f "$BOOTCFG" ] || BOOTCFG=/boot/config.txt
 if [ -f "$BOOTCFG" ] && ! grep -q "waveshare35c" "$BOOTCFG"; then
     sudo tee -a "$BOOTCFG" > /dev/null <<'EOF'
 
-# --- Fennec : ecran tactile Waveshare 3.5" (C) ---
+# --- Fennec: Waveshare 3.5" (C) touchscreen ---
 disable_splash=1
 dtparam=spi=on
 dtoverlay=waveshare35c
 EOF
 fi
 
-# b) Droits VT pour lancer X hors session graphique
+# b) VT rights to start X outside a graphical session
 sudo cp "$SYS/Xwrapper.config" /etc/X11/Xwrapper.config
 
-# c) Login automatique sur la console tty1 (adapté à l'utilisateur)
+# c) Automatic login on the tty1 console (adapted to the user)
 sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
 sudo sed "s/__USER__/$USER_NAME/" "$SYS/getty-autologin.conf" \
     | sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null
 sudo systemctl daemon-reload
 
-# d) Démarrage de X au login tty1, puis Chromium en kiosk
+# d) Start X on tty1 login, then Chromium in kiosk mode
 cp "$SYS/xinitrc" "$USER_HOME/.xinitrc"
 chmod +x "$USER_HOME/.xinitrc"
 if ! grep -q "exec startx" "$USER_HOME/.bash_profile" 2>/dev/null; then
@@ -226,7 +226,7 @@ if ! grep -q "exec startx" "$USER_HOME/.bash_profile" 2>/dev/null; then
 fi
 
 echo ""
-echo "==> Installation terminée."
-echo "    Redémarre une fois pour activer le SPI, l'écran et le kiosk :  sudo reboot"
-echo "    Au redémarrage, Fennec démarre seul et s'affiche sur l'écran tactile."
-echo "    Accès réseau si besoin :  http://<IP-du-Pi>:5000/"
+echo "==> Installation complete."
+echo "    Reboot once to enable SPI, the screen and the kiosk:  sudo reboot"
+echo "    On reboot, Fennec starts on its own and shows on the touchscreen."
+echo "    Network access if needed:  http://<Pi-IP>:5000/"

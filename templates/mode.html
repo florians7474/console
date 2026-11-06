@@ -85,9 +85,9 @@
       var img = document.getElementById("pwna-live");
       var charge = document.getElementById("pwna-chargement");
       if (!img) return;
-      // On précharge dans une image temporaire : tant que l'UI de Pwnagotchi
-      // n'est pas prête (erreur 503), on garde l'animation et on réessaie, sans
-      // jamais afficher l'icône d'image cassée. On n'affiche que ce qui charge.
+      // Preload into a temporary image: while Pwnagotchi's UI isn't ready
+      // (error 503), keep the animation and retry, without ever showing the
+      // broken-image icon. Only show what actually loads.
       function rafraichir() {
         var tmp = new Image();
         tmp.onload = function () {
