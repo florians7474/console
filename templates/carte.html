@@ -8,8 +8,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    html,body { width:480px; height:320px; overflow:hidden; background:#0d1117;
+    html,body { width:100%; height:100%; background:#0d1117;
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+    .ecran { position:relative; width:480px; height:320px; overflow:hidden; }
     #carte { width:480px; height:320px; }
     .retour {
       position:absolute; top:10px; left:10px; z-index:1000;
@@ -29,7 +30,7 @@
       position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
       z-index:1000; color:#8b949e; font-size:13px; text-align:center;
       background:rgba(13,17,23,.9); border:1px solid #30363d; border-radius:12px;
-      padding:14px 18px; max-width:320px; line-height:1.5;
+      padding:14px 18px; width:300px; line-height:1.5;
     }
     .pop b { color:#e6edf3; }
     .pop .mono { font-family:ui-monospace,Consolas,monospace; font-size:11px; color:#8b949e; }
@@ -42,20 +43,22 @@
   </style>
 </head>
 <body>
-  <a class="retour" href="/">&larr;</a>
-  <div id="carte"></div>
+  <div class="ecran">
+    <a class="retour" href="/">&larr;</a>
+    <div id="carte"></div>
 
-  {% if points %}
-  <div class="legende">
-    <span><span class="pt" style="background:#2ea043"></span>allowed</span>
-    <span><span class="pt" style="background:#d29922"></span>handshake</span>
-    {% if sans_position %}<span>{{ sans_position }} without GPS</span>{% endif %}
+    {% if points %}
+    <div class="legende">
+      <span><span class="pt" style="background:#2ea043"></span>allowed</span>
+      <span><span class="pt" style="background:#d29922"></span>handshake</span>
+      {% if sans_position %}<span>{{ sans_position }} without GPS</span>{% endif %}
+    </div>
+    {% else %}
+    <div class="vide">No geolocated handshake yet.<br>Capture outdoors with a GPS fix to see points here.
+      {% if sans_position %}<br><span style="font-size:11px">({{ sans_position }} handshake(s) captured without a GPS fix)</span>{% endif %}
+    </div>
+    {% endif %}
   </div>
-  {% else %}
-  <div class="vide">No geolocated handshake yet.<br>Capture outdoors with a GPS fix to see points here.
-    {% if sans_position %}<br><span style="font-size:11px">({{ sans_position }} handshake(s) captured without a GPS fix)</span>{% endif %}
-  </div>
-  {% endif %}
 
   <script>
     const points = {{ points|tojson }};
