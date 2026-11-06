@@ -90,6 +90,28 @@
     .pwr-reboot { background:#1f6feb; }
     .pwr-off { background:#da3633; }
     .pwr-cancel { padding:11px 0; border:1px solid #30363d; border-radius:10px; background:transparent; color:#8b949e; font-size:13px; }
+    .pwr-lock { background:#238636; }
+
+    /* Lock screen (nomadic use: ignore accidental touches while in a bag) */
+    .lock-overlay { display:none; position:absolute; inset:0; z-index:100;
+      background:radial-gradient(130% 130% at 50% 40%, #1b2330 0%, #0d1117 70%);
+      flex-direction:column; align-items:center; justify-content:center; }
+    .lock-center { display:flex; flex-direction:column; align-items:center; gap:6px; margin-bottom:30px; }
+    .lock-logo { width:80px; height:80px; object-fit:contain; }
+    .lock-word { color:#01F994; font-size:19px; font-weight:800; letter-spacing:3px; }
+    .wifi { width:58px; height:48px; }
+    .wifi .seg { fill:none; stroke:#2b3038; stroke-width:5; stroke-linecap:round; transition:stroke .15s; }
+    .wifi .dot { fill:#2b3038; transition:fill .15s; }
+    .wifi .seg.on { stroke:#01F994; }
+    .wifi .dot.on { fill:#01F994; }
+    .lock-slide { position:absolute; bottom:24px; left:0; right:0; display:flex; justify-content:center; }
+    .lock-track { position:relative; width:300px; height:54px; border-radius:27px;
+      background:#161b22; border:1px solid #30363d; overflow:hidden; }
+    .lock-hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      color:#5a6673; font-size:13px; pointer-events:none; }
+    .lock-knob { position:absolute; top:3px; left:3px; width:46px; height:46px; border-radius:50%;
+      background:#238636; color:#fff; display:flex; align-items:center; justify-content:center;
+      font-size:22px; touch-action:none; z-index:2; }
   </style>
 </head>
 <body>
@@ -171,11 +193,31 @@
   <div id="pwrdlg" class="pwr-overlay">
     <div class="pwr-box">
       <div class="pwr-title">Power</div>
+      <button class="pwr-act pwr-lock" onclick="lockScreen()">Lock screen</button>
       <div class="pwr-btns">
         <button class="pwr-act pwr-reboot" onclick="doPower('reboot', this)">Reboot</button>
         <button class="pwr-act pwr-off" onclick="doPower('poweroff', this)">Shut down</button>
       </div>
       <button class="pwr-cancel" onclick="document.getElementById('pwrdlg').style.display='none'">Cancel</button>
+    </div>
+  </div>
+
+  <div id="lockscr" class="lock-overlay">
+    <div class="lock-center">
+      <img src="/static/fennec.png" class="lock-logo" alt="">
+      <svg class="wifi" viewBox="0 0 64 52" xmlns="http://www.w3.org/2000/svg">
+        <path id="d3" class="seg" d="M13.62 25.62 A26 26 0 0 1 50.38 25.62"/>
+        <path id="d2" class="seg" d="M19.27 31.27 A18 18 0 0 1 44.73 31.27"/>
+        <path id="d1" class="seg" d="M24.93 36.93 A10 10 0 0 1 39.07 36.93"/>
+        <circle id="d0" class="dot" cx="32" cy="44" r="3.5"/>
+      </svg>
+      <div class="lock-word">FENNEC</div>
+    </div>
+    <div class="lock-slide">
+      <div class="lock-track">
+        <div class="lock-hint">slide to unlock &rarr;</div>
+        <div class="lock-knob" id="lockknob">&rarr;</div>
+      </div>
     </div>
   </div>
 
@@ -187,6 +229,53 @@
         (action === 'reboot' ? 'Rebooting…' : 'Shutting down…') + '</div>';
       fetch('/power/' + action, { method: 'POST' });
     }
+
+    // Lock screen: full-screen overlay that swallows accidental touches (bag),
+    // with a looping Wi-Fi animation. Unlock only by dragging the slider.
+    (function () {
+      var segs = ['d0', 'd1', 'd2', 'd3'];
+      var step = 0, timer = null;
+      function paint() {
+        for (var i = 0; i < segs.length; i++) {
+          document.getElementById(segs[i]).classList.toggle('on', i < step);
+        }
+        step = (step + 1) % (segs.length + 1);
+      }
+      window.lockScreen = function () {
+        document.getElementById('pwrdlg').style.display = 'none';
+        knob.style.transform = 'translateX(0)'; x = 0;
+        document.getElementById('lockscr').style.display = 'flex';
+        step = 0; paint();
+        if (timer) clearInterval(timer);
+        timer = setInterval(paint, 450);
+      };
+      function unlock() {
+        if (timer) { clearInterval(timer); timer = null; }
+        document.getElementById('lockscr').style.display = 'none';
+      }
+      var knob = document.getElementById('lockknob');
+      var track = knob.parentElement;
+      var dragging = false, startX = 0, x = 0, maxX = 0;
+      knob.addEventListener('pointerdown', function (e) {
+        dragging = true;
+        try { knob.setPointerCapture(e.pointerId); } catch (_) {}
+        maxX = track.clientWidth - knob.offsetWidth - 6;
+        startX = e.clientX - x;
+      });
+      knob.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        x = Math.max(0, Math.min(maxX, e.clientX - startX));
+        knob.style.transform = 'translateX(' + x + 'px)';
+      });
+      function end() {
+        if (!dragging) return;
+        dragging = false;
+        if (x >= maxX - 6) { unlock(); }
+        x = 0; knob.style.transform = 'translateX(0)';
+      }
+      knob.addEventListener('pointerup', end);
+      knob.addEventListener('pointercancel', end);
+    })();
   </script>
 </body>
 </html>

@@ -20,7 +20,7 @@ The project also serves as a hands-on sandbox for learning offensive security. T
 | **Vigie** | Network radar + per-device traffic watch | ✅ Working |
 | **Carte** | Map of captures by GPS location | 🚧 Phase 1 |
 
-The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and opens the allowed-networks manager where you scan for networks and pick the ones you are allowed to test. A power button in the top-right opens an on-screen reboot / shut-down dialog, so the Pi can be powered off from the touchscreen without a keyboard.
+The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Offline, and opens the allowed-networks manager where you scan for networks and pick the ones you are allowed to test. A power button in the top-right opens an on-screen menu to lock the screen, reboot, or shut down, so the Pi can be handled entirely from the touchscreen without a keyboard. Lock screen is for nomadic use: it covers the UI with a looping Wi-Fi animation and ignores every touch (so the Pi can ride in a bag while a capture runs), and only a deliberate slide-to-unlock brings the interface back.
 
 **Pwnagotchi**, **Bjorn**, **Raton** and **Vigie** are operational: automatic installation, control from the tile, and a live view inside the interface.
 
@@ -81,7 +81,7 @@ Click or tap a tile to activate the matching module.
 - [x] Pwnagotchi module (install, control, display)
 - [x] One-command installer (SPI enabled, works on a fresh card in one pass)
 - [x] Touchscreen display and Chromium kiosk auto-starting at boot
-- [x] On-screen power menu (reboot / shut down) for the kiosk
+- [x] On-screen power menu: lock screen (nomadic), reboot, shut down
 - [x] Bjorn module (install, control, live console)
 - [x] Raton module (WPA cracking, 9-stage escalation, GPU export)
 - [x] Live connection indicator (Ethernet / Wi-Fi / Offline)
