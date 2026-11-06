@@ -27,7 +27,8 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y \
     git python3-venv python3-dev python3-flask aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
     liblgpio-dev swig libcap-dev iw tshark \
-    john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev
+    john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev \
+    chromium xserver-xorg xinit xserver-xorg-legacy
 
 # --- 1b. Activation du SPI (requis par l'écran e-Paper de Bjorn) ---
 # Sans SPI, /dev/spidev0.0 n'existe pas et Bjorn plante à l'initialisation de
@@ -180,8 +181,52 @@ sudo mkdir -p /etc/NetworkManager/conf.d
 sudo cp "$SYS/wifi-retry.conf" /etc/NetworkManager/conf.d/wifi-retry.conf
 sudo systemctl reload NetworkManager || true
 
+# --- 11. Fennec en service systemd ---
+# Fennec tourne en permanence (le kiosk et l'écran tactile s'y connectent).
+echo "==> Installation du service Fennec..."
+sudo sed -e "s/__USER__/$USER_NAME/g" -e "s#__REPO__#$REPO#g" "$SYS/fennec.service" \
+    | sudo tee /etc/systemd/system/fennec.service > /dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable fennec
+
+# --- 12. Écran tactile Waveshare 3.5" (C) + affichage kiosk ---
+# Écran de référence 480x320 sur le port GPIO, piloté par l'overlay
+# device-tree waveshare35c (pilote ILI9486 sur /dev/fb0, pas de fbcp car aucun
+# HDMI n'est branché). L'affichage de Fennec se fait en kiosk Chromium lancé au
+# démarrage : login auto sur la console tty1 -> startx -> ~/.xinitrc -> chromium.
+echo "==> Configuration de l'écran tactile et du kiosk..."
+
+# a) Overlay de l'écran dans le config.txt de boot (idempotent)
+BOOTCFG=/boot/firmware/config.txt
+[ -f "$BOOTCFG" ] || BOOTCFG=/boot/config.txt
+if [ -f "$BOOTCFG" ] && ! grep -q "waveshare35c" "$BOOTCFG"; then
+    sudo tee -a "$BOOTCFG" > /dev/null <<'EOF'
+
+# --- Fennec : ecran tactile Waveshare 3.5" (C) ---
+disable_splash=1
+dtparam=spi=on
+dtoverlay=waveshare35c
+EOF
+fi
+
+# b) Droits VT pour lancer X hors session graphique
+sudo cp "$SYS/Xwrapper.config" /etc/X11/Xwrapper.config
+
+# c) Login automatique sur la console tty1 (adapté à l'utilisateur)
+sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
+sudo sed "s/__USER__/$USER_NAME/" "$SYS/getty-autologin.conf" \
+    | sudo tee /etc/systemd/system/getty@tty1.service.d/autologin.conf > /dev/null
+sudo systemctl daemon-reload
+
+# d) Démarrage de X au login tty1, puis Chromium en kiosk
+cp "$SYS/xinitrc" "$USER_HOME/.xinitrc"
+chmod +x "$USER_HOME/.xinitrc"
+if ! grep -q "exec startx" "$USER_HOME/.bash_profile" 2>/dev/null; then
+    cat "$SYS/bash_profile_kiosk" >> "$USER_HOME/.bash_profile"
+fi
+
 echo ""
 echo "==> Installation terminée."
-echo "    Redémarre une fois pour activer le SPI :  sudo reboot"
-echo "    Lance ensuite Fennec avec :  python3 $REPO/app.py"
-echo "    Puis ouvre :                 http://<IP-du-Pi>:5000/"
+echo "    Redémarre une fois pour activer le SPI, l'écran et le kiosk :  sudo reboot"
+echo "    Au redémarrage, Fennec démarre seul et s'affiche sur l'écran tactile."
+echo "    Accès réseau si besoin :  http://<IP-du-Pi>:5000/"

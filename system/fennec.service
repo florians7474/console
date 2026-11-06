@@ -1,0 +1,14 @@
+[Unit]
+Description=Fennec launcher
+After=network.target
+
+[Service]
+User=__USER__
+WorkingDirectory=__REPO__
+Environment=FENNEC_DEBUG=0
+ExecStartPre=-/usr/bin/fuser -k 5000/tcp
+ExecStart=/usr/bin/python3 __REPO__/app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
