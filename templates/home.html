@@ -96,12 +96,11 @@
     .lock-overlay { display:none; position:absolute; inset:0; z-index:100;
       background:radial-gradient(130% 130% at 50% 40%, #1b2330 0%, #0d1117 70%);
       flex-direction:column; align-items:center; justify-content:center; }
-    .lock-center { display:flex; flex-direction:column; align-items:center; gap:6px; margin-bottom:30px; }
-    .lock-logo { width:80px; height:80px; object-fit:contain; }
-    .lock-word { color:#01F994; font-size:19px; font-weight:800; letter-spacing:3px; }
-    .wifi { width:58px; height:48px; }
-    .wifi .seg { fill:none; stroke:#2b3038; stroke-width:5; stroke-linecap:round; transition:stroke .15s; }
-    .wifi .dot { fill:#2b3038; transition:fill .15s; }
+    .lock-art { position:relative; width:243px; height:240px; margin-bottom:56px; }
+    .lock-art .mascot { width:243px; height:240px; object-fit:contain; display:block; }
+    .wifi { position:absolute; left:72.4%; top:46.0%; width:27.4%; height:22.9%; }
+    .wifi .seg { fill:none; stroke:transparent; stroke-width:12; stroke-linecap:round; transition:stroke .12s; }
+    .wifi .dot { fill:transparent; transition:fill .12s; }
     .wifi .seg.on { stroke:#01F994; }
     .wifi .dot.on { fill:#01F994; }
     .lock-slide { position:absolute; bottom:24px; left:0; right:0; display:flex; justify-content:center; }
@@ -203,15 +202,14 @@
   </div>
 
   <div id="lockscr" class="lock-overlay">
-    <div class="lock-center">
-      <img src="/static/fennec.png" class="lock-logo" alt="">
-      <svg class="wifi" viewBox="0 0 64 52" xmlns="http://www.w3.org/2000/svg">
-        <path id="d3" class="seg" d="M13.62 25.62 A26 26 0 0 1 50.38 25.62"/>
-        <path id="d2" class="seg" d="M19.27 31.27 A18 18 0 0 1 44.73 31.27"/>
-        <path id="d1" class="seg" d="M24.93 36.93 A10 10 0 0 1 39.07 36.93"/>
-        <circle id="d0" class="dot" cx="32" cy="44" r="3.5"/>
+    <div class="lock-art">
+      <img src="/static/fennec_lock.png" class="mascot" alt="">
+      <svg class="wifi" viewBox="0 0 126 104" xmlns="http://www.w3.org/2000/svg">
+        <path id="d3" class="seg" d="M8 30.3 A79 79 0 0 1 118 30.3"/>
+        <path id="d2" class="seg" d="M24 48.2 A55 55 0 0 1 102 48.2"/>
+        <path id="d1" class="seg" d="M40 66.2 A31 31 0 0 1 86 66.2"/>
+        <circle id="d0" class="dot" cx="63" cy="87" r="9"/>
       </svg>
-      <div class="lock-word">FENNEC</div>
     </div>
     <div class="lock-slide">
       <div class="lock-track">
