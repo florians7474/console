@@ -1,19 +1,10 @@
 #!/bin/bash
-# Détecte la 1re interface wlan capable de monitor et lance pwngrid dessus.
+# Lance pwngrid sur l'interface réellement en mode monitor (mise en place par bettercap).
 
-IFACE=""
-for d in /sys/class/net/wlan*; do
-    [ -e "$d" ] || continue
-    i=$(basename "$d")
-    phy=$(cat "$d/phy80211/name" 2>/dev/null)
-    if iw phy "$phy" info 2>/dev/null | grep -q "\* monitor"; then
-        IFACE="$i"
-        break
-    fi
-done
+IFACE=$(iw dev | awk '$1=="Interface"{i=$2} $1=="type"&&$2=="monitor"{print i; exit}')
 
 if [ -z "$IFACE" ]; then
-    echo "Aucune interface compatible monitor trouvée."
+    echo "Aucune interface en mode monitor trouvée."
     exit 1
 fi
 

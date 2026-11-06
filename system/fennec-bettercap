@@ -1,25 +1,32 @@
 #!/bin/bash
-# Détecte la 1re interface wlan capable de monitor et lance bettercap dessus.
+# Détecte une interface Wi-Fi capable de monitor, la passe en monitor et lance bettercap dessus.
 
-IFACE=""
+# 1) interface candidate : la 1re wlan dont la puce annonce le mode monitor
+CAND=""
 for d in /sys/class/net/wlan*; do
     [ -e "$d" ] || continue
     i=$(basename "$d")
     phy=$(cat "$d/phy80211/name" 2>/dev/null)
     if iw phy "$phy" info 2>/dev/null | grep -q "\* monitor"; then
-        IFACE="$i"
+        CAND="$i"
         break
     fi
 done
 
-if [ -z "$IFACE" ]; then
+if [ -z "$CAND" ]; then
     echo "Aucune interface compatible monitor trouvée. Branche une clé Wi-Fi compatible."
     exit 1
 fi
 
-echo "Interface monitor détectée : $IFACE"
-/sbin/airmon-ng start "$IFACE"
+echo "Interface candidate : $CAND"
+/sbin/airmon-ng start "$CAND" >/dev/null 2>&1
 
+# 2) selon le pilote, airmon-ng garde le nom (ex. wlan1) ou le renomme (ex. wlan1mon).
+#    On récupère l'interface réellement en mode monitor.
+IFACE=$(iw dev | awk '$1=="Interface"{i=$2} $1=="type"&&$2=="monitor"{print i; exit}')
+[ -z "$IFACE" ] && IFACE="$CAND"
+
+echo "Interface monitor active : $IFACE"
 exec /usr/bin/bettercap -no-colors \
     -caplet /etc/pwnagotchi/pwnagotchi-auto.cap \
     -iface "$IFACE"
