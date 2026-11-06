@@ -54,17 +54,17 @@ A single command on a freshly flashed Pi:
     cd fennec
     ./install.sh
 
-The script is idempotent and adapts to any user. It installs the system packages (including nmap), enables SPI (needed by Bjorn's e-paper display), sets up Pwnagotchi in an isolated venv, compiles pwngrid, builds routerkeygen-cli, installs Bjorn in its own venv from a pinned requirements file that works on Python 3.13, downloads the Raton wordlists (10k-common, probable-wpa and rockyou from SecLists), generates a random bettercap password, and configures all systemd services. No sensitive data is stored in the repository.
+The script is idempotent and adapts to any user. It installs the system packages (including nmap), enables SPI (needed by Bjorn's e-paper display), sets up Pwnagotchi in an isolated venv, compiles pwngrid, builds routerkeygen-cli, installs Bjorn in its own venv from a pinned requirements file that works on Python 3.13, downloads the Raton wordlists (10k-common, probable-wpa and rockyou from SecLists), generates a random bettercap password, and configures all systemd services. It also installs Fennec as a systemd service and sets up the Waveshare 3.5" touchscreen end to end: the SPI overlay, X, and a Chromium kiosk that starts Fennec full-screen at boot. No sensitive data is stored in the repository.
 
-Reboot once after the install so SPI takes effect, then start Fennec.
+Reboot once after the install. On boot the touchscreen comes up on its own and Fennec starts as a service, showing the interface full-screen in a Chromium kiosk.
 
 ## Usage
 
-Start Fennec and open the interface from a browser on the local network:
+After the reboot the interface runs full-screen on the touchscreen and is ready to use. You can also reach it from a browser on the local network:
 
     http://fennec.local:5000/
 
-Click a tile to activate the matching module.
+Click or tap a tile to activate the matching module.
 
 ## Architecture
 
@@ -80,6 +80,7 @@ Click a tile to activate the matching module.
 - [x] Fennec launcher and tile interface
 - [x] Pwnagotchi module (install, control, display)
 - [x] One-command installer (SPI enabled, works on a fresh card in one pass)
+- [x] Touchscreen display and Chromium kiosk auto-starting at boot
 - [x] Bjorn module (install, control, live console)
 - [x] Raton module (WPA cracking, 9-stage escalation, GPU export)
 - [x] Live connection indicator (Ethernet / Wi-Fi / Offline)

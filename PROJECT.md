@@ -19,8 +19,8 @@ only applies to Wi-Fi.
 ### Owned / final build
 - Raspberry Pi 5, Raspberry Pi OS 64-bit desktop (hostname fennec, user florian)
 - Screen: Waveshare 3.5" RPi LCD (C), resistive touch, 480x320, high-speed SPI
-  (the UI is built at 480x320, fits without rework; needs the SPI overlay
-  enabled in config.txt at mount time)
+  (the UI is built at 480x320, fits without rework; the SPI overlay waveshare35c
+  and the Chromium kiosk are set up by install.sh — see Install below)
 - Wi-Fi USB adapter (monitor mode, required — Pi 5 built-in chip can't do it):
   Alfa AWUS036AXM (MediaTek MT7921AU), plugs straight into USB. Auto-detected
   by Fennec (first wlan* whose phy advertises monitor mode), no config needed.
@@ -189,8 +189,19 @@ adapts to any user/path; generates a random bettercap password; nothing
 sensitive in the repo). Installs Fennec, Pwnagotchi, Bjorn (clone + dedicated
 venv + systemd services), and all Raton deps (routerkeygen, hcxtools, John,
 nmap, and the wordlists 10k-common / probable-wpa / rockyou fetched from
-SecLists).
+SecLists). Fennec itself is installed as a systemd service (enabled at boot),
+and the Waveshare 3.5" touchscreen is set up end to end so it lights up on its
+own on a fresh Pi.
 Notes:
+- Touchscreen + kiosk: the installer adds the overlay waveshare35c (+ dtparam=spi=on)
+  to /boot/firmware/config.txt, installs chromium + X (xserver-xorg, xinit,
+  xserver-xorg-legacy), writes /etc/X11/Xwrapper.config for VT rights, auto-logs in
+  on tty1 (getty override) -> startx -> ~/.xinitrc, which waits for :5000 then opens
+  Chromium in kiosk mode. No fbcp: with no HDMI the SPI screen is /dev/fb0 directly.
+  The touch is not calibrated (resistive panel works as-is). Reboot once for the
+  overlay + kiosk to take effect.
+- Fennec service: system/fennec.service runs app.py as the install user with
+  FENNEC_DEBUG=0, enabled at boot (WorkingDirectory = the repo folder).
 - On Raspberry Pi OS Trixie, routerkeygen's qmake may default to Qt6; if the
   CLI build fails on a fresh Pi, force Qt5 (qmake -qt5).
 - Bjorn's upstream requirements.txt pins old versions (e.g. Pillow 9.4.0) that
@@ -239,9 +250,6 @@ Editing any project file: nano ~/console/<file>.
   Pi rejoins its network on its own when it comes back in range without a reboot.
 
 ## Known issues
-- Flask runs in debug (debug=True), leaves 2 processes on :5000 ("Address
-  already in use" on restart). Workaround: sudo kill $(sudo lsof -t -i :5000).
-  Will disappear once Fennec runs as a systemd service. Not urgent.
 - While Vigie's Watch (MITM) is active, all LAN traffic routes through the Pi,
   so SSH and the UI can lag; it recovers once you Stop. Starting another mode or
   quitting Fennec stops it automatically.
