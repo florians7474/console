@@ -68,8 +68,8 @@
     .cass  { background:linear-gradient(150deg,#ffb020,#e86a0a); }
     .bjorn { background:linear-gradient(150deg,#6f9bc8,#33506f); }
     .vigie { background:linear-gradient(150deg,#28c0d4,#1577a0); }
-    .carte { background:linear-gradient(150deg,#8b5cf6,#5b2fd6); }
-    .carte svg { width:40px; height:40px; z-index:1; }
+    .map { background:linear-gradient(150deg,#8b5cf6,#5b2fd6); }
+    .map svg { width:40px; height:40px; z-index:1; }
     .nom { margin-top:7px; font-size:12px; font-weight:600; color:#e6edf3; }
     .etat { display:flex; align-items:center; gap:5px; margin-top:2px; font-size:10px; color:#8b949e; }
     .pastille { width:6px; height:6px; border-radius:50%; background:#5a6673; }
@@ -124,8 +124,8 @@
     <img src="/static/fennec.png" alt="">
     <div class="marque">Fennec</div>
     <div class="sp"></div>
-    <a class="conn {{ 'ok' if connexion.type }}" href="/connexion">
-      {% if connexion.type == 'ethernet' %}
+    <a class="conn {{ 'ok' if connection.type }}" href="/connection">
+      {% if connection.type == 'ethernet' %}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="9" y="3" width="6" height="4" rx="1"/><rect x="3" y="17" width="6" height="4" rx="1"/><rect x="15" y="17" width="6" height="4" rx="1"/>
         <path d="M12 7v3M6 17v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/>
@@ -135,7 +135,7 @@
         <path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="0.6"/>
       </svg>
       {% endif %}
-      <span>{{ connexion.nom }}</span>
+      <span>{{ connection.nom }}</span>
     </a>
     <a class="reglages" href="/whitelist" title="Allowed networks">
       <svg viewBox="0 0 24 24" fill="none" stroke="#8b949e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -158,10 +158,10 @@
       <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='pwnagotchi' else 'stopped' }}</div>
     </a>
 
-    <a class="app {{ 'on' if actif=='cassage' }}" href="/mode/cassage">
+    <a class="app {{ 'on' if actif=='cracking' }}" href="/mode/cracking">
       <div class="icone cass"><img src="/static/raton.png" alt="Raton"></div>
       <div class="nom">Raton</div>
-      <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='cassage' else 'stopped' }}</div>
+      <div class="etat"><span class="pastille"></span>{{ 'active' if actif=='cracking' else 'stopped' }}</div>
     </a>
 
     <a class="app {{ 'on' if actif=='bjorn' }}" href="/mode/bjorn">
@@ -176,8 +176,8 @@
       <div class="etat"><span class="pastille"></span>{{ 'watching' if actif=='vigie' else 'idle' }}</div>
     </a>
 
-    <a class="app" href="/carte">
-      <div class="icone carte">
+    <a class="app" href="/map">
+      <div class="icone map">
         <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
           <circle cx="12" cy="10" r="3"/>

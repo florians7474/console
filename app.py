@@ -21,7 +21,7 @@ etat = {"mode_actif": None, "reseau": None}
 
 MODES = {
     "pwnagotchi": {"nom": "Pwnagotchi", "classe": "pwn",   "url": None},
-    "cassage":    {"nom": "Raton",      "classe": "cass",  "url": None},
+    "cracking":    {"nom": "Raton",      "classe": "cass",  "url": None},
     "bjorn":      {"nom": "Bjorn",      "classe": "bjorn", "url": None},
 }
 
@@ -34,7 +34,7 @@ def _load(fichier):
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
-def _sauver(fichier, data):
+def _save(fichier, data):
     with open(fichier, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
@@ -42,19 +42,19 @@ def load_whitelist():
     return _load(WHITELIST_FILE)
 
 def save_whitelist(reseaux):
-    _sauver(WHITELIST_FILE, reseaux)
+    _save(WHITELIST_FILE, reseaux)
 
 def load_mine():
     return _load(MINE_FILE)   # list of device ids declared "mine"
 
 def save_mine(ids):
-    _sauver(MINE_FILE, ids)
+    _save(MINE_FILE, ids)
 
 def load_scan():
     return _load(SCAN_FILE)   # last saved direct scan
 
 def save_scan(reseaux):
-    _sauver(SCAN_FILE, reseaux)
+    _save(SCAN_FILE, reseaux)
 
 # ---------- Modes ----------
 
@@ -70,7 +70,7 @@ SERVICES = {
 
 import glob
 
-def detecter_cle_monitor():
+def detect_monitor_iface():
     """Return the name of the first wlan interface capable of monitor mode, else None."""
     for chemin in sorted(glob.glob("/sys/class/net/wlan*")):
         iface = os.path.basename(chemin)
@@ -128,7 +128,7 @@ def pwna_ui():
     except Exception:
         abort(503)
 
-def etat_connexion():
+def connection_state():
     """The Pi's real network connection: ethernet, wifi (+SSID) or none."""
     try:
         r = subprocess.run(
@@ -164,7 +164,7 @@ def local_ip():
             return tok
     return None
 
-def sous_reseau_local():
+def local_subnet():
     """The Pi's /24 subnet (e.g. 192.168.1.0/24), or None."""
     ip = local_ip()
     return ".".join(ip.split(".")[:3]) + ".0/24" if ip else None
@@ -227,12 +227,12 @@ def vigie_devices():
             "inconnu": inconnu,
         })
     # Unknowns first, then by IP (numeric order on the octets)
-    def cle_ip(d):
+    def ip_key(d):
         try:
             return tuple(int(x) for x in d["ip"].split("."))
         except Exception:
             return (999,)
-    out.sort(key=lambda d: (not d["inconnu"], cle_ip(d)))
+    out.sort(key=lambda d: (not d["inconnu"], ip_key(d)))
     last_scan.clear()
     last_scan.update({d["ip"]: d for d in out})
     return out
@@ -315,7 +315,7 @@ def guess_type(ports, vendor):
 
 # ---------- Vigie: network identity, custom names, traffic history ----------
 
-def id_reseau():
+def network_id():
     """Stable id of the current network: the router's MAC, else the subnet."""
     pg = passerelle_ip()
     if pg:
@@ -327,7 +327,7 @@ def id_reseau():
                 return m.group(1).upper()
         except Exception:
             pass
-    return sous_reseau_local() or "default"
+    return local_subnet() or "default"
 
 def custom_name(mac):
     """User-given name for a device (this network), or None."""
@@ -336,20 +336,20 @@ def custom_name(mac):
     noms = _load(NAMES_FILE)
     if not isinstance(noms, dict):
         return None
-    return noms.get(id_reseau(), {}).get(mac.upper())
+    return noms.get(network_id(), {}).get(mac.upper())
 
 def set_name(mac, nom):
     noms = _load(NAMES_FILE)
     if not isinstance(noms, dict):
         noms = {}
-    rid = id_reseau()
+    rid = network_id()
     noms.setdefault(rid, {})
     nom = (nom or "").strip()[:40]
     if nom:
         noms[rid][mac.upper()] = nom
     else:
         noms[rid].pop(mac.upper(), None)
-    _sauver(NAMES_FILE, noms)
+    _save(NAMES_FILE, noms)
 
 # Traffic history kept in memory, flushed to disk from time to time.
 _hist = None
@@ -369,7 +369,7 @@ def _history_flush(force=False):
         return
     if not force and (time.time() - _hist_last) < 20:
         return
-    _sauver(HISTORY_FILE, _hist)
+    _save(HISTORY_FILE, _hist)
     _hist_dirty = False
     _hist_last = time.time()
 
@@ -379,7 +379,7 @@ def merge_traffic(mac, live):
     if not mac:
         return dict(live)
     h = _history_load()
-    rid = id_reseau()
+    rid = network_id()
     dev = h.setdefault(rid, {}).setdefault(mac.upper(), {})
     for dom, ts in live.items():
         if dom not in dev or ts > dev[dom]:
@@ -392,13 +392,13 @@ def merge_traffic(mac, live):
 def home():
     mode_actif = etat["mode_actif"]
     # Raton runs in a thread, not a service: the dot follows the engine's real state.
-    if mode_actif == "cassage" and not raton_engine.crack_state.get("actif"):
+    if mode_actif == "cracking" and not raton_engine.crack_state.get("actif"):
         mode_actif = None
         etat["mode_actif"] = None
     if mode_actif == "vigie" and not vigie_monitor.monitor_state.get("actif"):
         mode_actif = None
         etat["mode_actif"] = None
-    return render_template("home.html", actif=mode_actif, connexion=etat_connexion())
+    return render_template("home.html", actif=mode_actif, connection=connection_state())
 
 HANDSHAKES_DIR = "/etc/pwnagotchi/handshakes"
 
@@ -470,7 +470,7 @@ def mode(nom):
     if nom not in MODES:
         abort(404)
 
-    if nom == "cassage":
+    if nom == "cracking":
         e = raton_engine.crack_state
         if e.get("actif"):
             capture = next((c for c in read_handshakes()
@@ -496,9 +496,9 @@ def mode(nom):
         etat["mode_actif"] = "bjorn" if actif else etat["mode_actif"]
         hote = request.host.split(":")[0]
         url_iframe = f"http://{hote}:8000/"
-        conn = etat_connexion()
+        conn = connection_state()
         reseau_scan = {"type": conn["type"], "nom": conn["nom"],
-                       "sous_reseau": sous_reseau_local()}
+                       "sous_reseau": local_subnet()}
         return render_template("mode.html", cle=nom, infos=MODES[nom], actif=actif,
                                url_ui=None, url_iframe=url_iframe, reseau_scan=reseau_scan)
     actif = (etat["mode_actif"] == nom)
@@ -528,10 +528,10 @@ def toggle(nom):
 def crack_test(bssid):
     autorises = {r["bssid"] for r in load_whitelist()}
     if bssid not in autorises:
-        return redirect(url_for("mode", nom="cassage"))
+        return redirect(url_for("mode", nom="cracking"))
     capture = next((c for c in read_handshakes() if c["bssid"] == bssid), None)
     if not capture:
-        return redirect(url_for("mode", nom="cassage"))
+        return redirect(url_for("mode", nom="cracking"))
     # Raton takes over: stop the running modes (Pwnagotchi / Bjorn / Vigie)
     if est_actif("pwnagotchi"):
         stop("pwnagotchi")
@@ -539,7 +539,7 @@ def crack_test(bssid):
         stop("bjorn")
     if vigie_monitor.monitor_state["actif"]:
         vigie_monitor.stop()
-    etat["mode_actif"] = "cassage"
+    etat["mode_actif"] = "cracking"
     etat["reseau"] = capture["nom"]
     pcap = os.path.join(HANDSHAKES_DIR, capture["fichier"])
     raton_engine.lancer(pcap, bssid, capture["nom"])
@@ -637,8 +637,8 @@ def crack_stop():
     raton_engine.stop()
     return jsonify({"ok": True})
 
-@app.route("/carte")
-def carte():
+@app.route("/map")
+def map_view():
     deja = {r["bssid"] for r in load_whitelist()}
     points = []
     sans_position = 0
@@ -664,21 +664,21 @@ def carte():
 
 # ---------- Connection ----------
 
-@app.route("/connexion")
-def connexion():
+@app.route("/connection")
+def connection():
     return render_template("connection.html", reseaux=load_whitelist(), actuel=etat["reseau"])
 
-@app.route("/connexion/vers/<bssid>")
-def connexion_vers(bssid):
+@app.route("/connection/to/<bssid>")
+def connection_to(bssid):
     cible = next((r for r in load_whitelist() if r["bssid"] == bssid), None)
     if cible:
         etat["reseau"] = cible
-    return redirect(url_for("connexion"))
+    return redirect(url_for("connection"))
 
-@app.route("/connexion/stop")
-def connexion_stop():
+@app.route("/connection/stop")
+def connection_stop():
     etat["reseau"] = None
-    return redirect(url_for("connexion"))
+    return redirect(url_for("connection"))
 
 # ---------- Vigie ----------
 

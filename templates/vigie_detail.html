@@ -51,15 +51,15 @@
     .modal { display:none; position:absolute; top:0; left:0; width:480px; height:320px;
              background:rgba(0,0,0,.6); z-index:10; align-items:center; justify-content:center; }
     .modal.on { display:flex; }
-    .carte { width:330px; background:#161b22; border:1px solid #30363d; border-radius:12px;
+    .map { width:330px; background:#161b22; border:1px solid #30363d; border-radius:12px;
              padding:18px; display:flex; flex-direction:column; gap:12px; }
-    .carte h3 { font-size:15px; font-weight:600; }
-    .carte input { background:#0d1117; border:1px solid #30363d; border-radius:8px; color:#e6edf3;
+    .map h3 { font-size:15px; font-weight:600; }
+    .map input { background:#0d1117; border:1px solid #30363d; border-radius:8px; color:#e6edf3;
                    font-size:14px; padding:10px 12px; }
-    .carte .lignes { display:flex; gap:8px; justify-content:flex-end; }
-    .carte .annuler { border:1px solid #30363d; background:none; color:#e6edf3; border-radius:8px;
+    .map .lignes { display:flex; gap:8px; justify-content:flex-end; }
+    .map .annuler { border:1px solid #30363d; background:none; color:#e6edf3; border-radius:8px;
                       padding:9px 14px; font-size:13px; cursor:pointer; }
-    .carte .valider { border:none; background:#2ea043; color:#fff; border-radius:8px;
+    .map .valider { border:none; background:#2ea043; color:#fff; border-radius:8px;
                       padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; }
   </style>
 </head>
@@ -96,7 +96,7 @@
 
   {% if d.mac %}
   <div class="modal" id="modalNom">
-    <div class="carte">
+    <div class="map">
       <h3>Device name</h3>
       <input id="champNom" type="text" maxlength="40" placeholder="e.g. Aude's iPhone"
              value="{{ d.nom if d.nom not in ['Unknown device', 'This Pi', 'Router'] else '' }}">

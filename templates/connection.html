@@ -56,9 +56,9 @@
         </div>
         {% if actuel and actuel.bssid == r.bssid %}
           <span class="badge">Connected</span>
-          <a class="btn stop" href="/connexion/stop">Disconnect</a>
+          <a class="btn stop" href="/connection/stop">Disconnect</a>
         {% else %}
-          <a class="btn go" href="/connexion/vers/{{ r.bssid }}">Connect</a>
+          <a class="btn go" href="/connection/to/{{ r.bssid }}">Connect</a>
         {% endif %}
       </div>
       {% endfor %}

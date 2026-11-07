@@ -186,11 +186,11 @@ short candidate is ever shown or tested.
 - 9-stage escalation built, reordered, and tested live on a real Bbox.
 - Robustness score recalibrated for the 9 stages: stage where the box falls =
   its grade (Critical / Very weak / Weak / Moderate / Robust).
-  _score_robustesse() in raton_engine.py, shown on result.
+  _robustness_score() in raton_engine.py, shown on result.
 - Auto key write: a cracked key is written back into the whitelist by BSSID
-  (route /cassage/etat in app.py).
-- GPU export: /cassage/export/<bssid> converts the .pcap to .hc22000
-  (hcxpcapngtool) and returns the hashcat command; "GPU" button -> cassage_gpu.html.
+  (route /cracking/state in app.py).
+- GPU export: /cracking/export/<bssid> converts the .pcap to .hc22000
+  (hcxpcapngtool) and returns the hashcat command; "GPU" button -> crack_gpu.html.
 - Robust stdout reading (errors="replace") so a non-UTF8 byte from aircrack no
   longer freezes a stage.
 - install.sh now folds all Raton deps (routerkeygen build, hcxtools, John,

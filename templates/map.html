@@ -11,7 +11,7 @@
     html,body { width:100%; height:100%; background:#0d1117;
       font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
     .ecran { position:relative; width:480px; height:320px; overflow:hidden; }
-    #carte { width:480px; height:320px; }
+    #map { width:480px; height:320px; }
     .retour {
       position:absolute; top:10px; left:10px; z-index:1000;
       background:#161b22; color:#e6edf3; text-decoration:none;
@@ -45,7 +45,7 @@
 <body>
   <div class="ecran">
     <a class="retour" href="/">&larr;</a>
-    <div id="carte"></div>
+    <div id="map"></div>
 
     {% if points %}
     <div class="legende">
@@ -62,11 +62,11 @@
 
   <script>
     const points = {{ points|tojson }};
-    const carte = L.map('carte', { zoomControl: false });
-    L.control.zoom({ position: 'topright' }).addTo(carte);
+    const map = L.map('map', { zoomControl: false });
+    L.control.zoom({ position: 'topright' }).addTo(map);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; OpenStreetMap'
-    }).addTo(carte);
+    }).addTo(map);
 
     const COUL_OK = '#2ea043', COUL_HS = '#d29922';
     const marqueurs = [];
@@ -75,7 +75,7 @@
       const couleur = p.autorise ? COUL_OK : COUL_HS;
       const m = L.circleMarker([p.lat, p.lon], {
         radius: 9, color: couleur, weight: 2, fillColor: couleur, fillOpacity: 0.75
-      }).addTo(carte);
+      }).addTo(map);
       m.bindPopup(popupContent(p, i));
       marqueurs.push(m);
     });
@@ -113,9 +113,9 @@
     }
 
     if (marqueurs.length) {
-      carte.fitBounds(L.featureGroup(marqueurs).getBounds().pad(0.3));
+      map.fitBounds(L.featureGroup(marqueurs).getBounds().pad(0.3));
     } else {
-      carte.setView([48.8566, 2.3522], 15);
+      map.setView([48.8566, 2.3522], 15);
     }
   </script>
 </body>

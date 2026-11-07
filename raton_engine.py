@@ -59,7 +59,7 @@ def lancer(pcap, bssid, reseau="", wordlist=WORDLISTS["rockyou"]):
     t = threading.Thread(target=_run, args=(pcap, bssid, reseau, wordlist), daemon=True)
     t.start()
 
-def generer_clavier(fichier):
+def generate_keyboard(fichier):
     """Stage: keyboard walks and repetition patterns (min 8 chars for WPA)."""
     bases = [
         "1234567890", "0987654321", "azertyuiop", "qwertyuiop",
@@ -83,7 +83,7 @@ def generer_clavier(fichier):
             f.write(m + "\n")
     return fichier
 
-def generer_dates(fichier, an_debut=1950, an_fin=2025):
+def generate_dates(fichier, an_debut=1950, an_fin=2025):
     """Stage: generate all DDMMYYYY dates (8 digits) as WPA candidates."""
     jours_par_mois = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     with open(fichier, "w") as f:
@@ -119,7 +119,7 @@ def profile_for_essid(essid):
             return p
     return None
 
-def cles_constructeur(essid, bssid):
+def factory_keys(essid, bssid):
     """Stage 1: targeted factory keys = box-profile routing + routerkeygen-cli."""
     profil = profile_for_essid(essid)
     # Known non-target (community hotspot, etc.): skip the whole stage.
@@ -173,9 +173,9 @@ STAGES = [
     {"nom": "factory default keys", "type": "constructeur"},
     {"nom": "ESSID profiling (custom name)", "type": "essid"},
     {"nom": "real cracked keys (probable-wpa)", "type": "wordlist", "fichier": "/usr/share/wordlists/probable-wpa-top4800.txt"},
-    {"nom": "birth dates (DDMMYYYY/YYYYMMDD)", "type": "genere", "generateur": generer_dates},
+    {"nom": "birth dates (DDMMYYYY/YYYYMMDD)", "type": "genere", "generateur": generate_dates},
     {"nom": "10k common passwords", "type": "wordlist", "fichier": "/usr/share/wordlists/10k-common.txt"},
-    {"nom": "keyboard patterns", "type": "genere", "generateur": generer_clavier},
+    {"nom": "keyboard patterns", "type": "genere", "generateur": generate_keyboard},
     {"nom": "common + mutation rules", "type": "regles", "fichier": "/usr/share/wordlists/10k-common.txt"},
     {"nom": "John incremental (1h)", "type": "temps", "source": "john_inc"},
     {"nom": "rockyou random (1h)", "type": "temps", "source": "rockyou_shuf"},
@@ -216,7 +216,7 @@ def _run(pcap, bssid, reseau, wordlist):
 
         # Prepare this stage's wordlist / source
         if etage["type"] == "constructeur":
-            cles = cles_constructeur(reseau, bssid)
+            cles = factory_keys(reseau, bssid)
             if not cles:
                 with _lock:
                     crack_state["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})

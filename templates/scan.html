@@ -45,17 +45,17 @@
       z-index:10; align-items:center; justify-content:center;
     }
     .modal.on { display:flex; }
-    .carte {
+    .map {
       width:320px; background:#161b22; border:1px solid #30363d; border-radius:12px;
       padding:18px; display:flex; flex-direction:column; gap:14px;
     }
-    .carte h3 { font-size:15px; font-weight:600; }
-    .carte .lignes { display:flex; gap:8px; justify-content:flex-end; }
-    .carte .annuler {
+    .map h3 { font-size:15px; font-weight:600; }
+    .map .lignes { display:flex; gap:8px; justify-content:flex-end; }
+    .map .annuler {
       border:1px solid #30363d; background:none; color:#e6edf3; border-radius:8px;
       padding:9px 14px; font-size:13px; cursor:pointer;
     }
-    .carte .valider {
+    .map .valider {
       border:none; background:#da3633; color:#fff; border-radius:8px;
       padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer;
     }
@@ -101,7 +101,7 @@
   </div>
 
   <div class="modal" id="modalConfirm">
-    <div class="carte">
+    <div class="map">
       <h3>Clear everything?</h3>
       <div class="lignes">
         <button type="button" class="annuler" onclick="closeConfirm()">Cancel</button>
