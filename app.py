@@ -751,6 +751,14 @@ def vigie_monitor_stop():
 def vigie_monitor_data():
     return jsonify(vigie_monitor.instantane())
 
+@app.route("/vigie/monitor/force")
+def vigie_monitor_force():
+    # Only while watching: the DoT/DoH block sits on the MITM-forwarded traffic.
+    if not vigie_monitor.etat_monitor["actif"]:
+        return jsonify({"actif": False, "force": False})
+    force = vigie_monitor.forcer_dns(request.args.get("on") == "1")
+    return jsonify({"actif": True, "force": force})
+
 @app.route("/vigie/trafic/<ip>")
 def vigie_trafic(ip):
     if not re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", ip):

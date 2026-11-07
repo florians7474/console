@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Vigie "Force DNS": push hardened devices back onto cleartext DNS so Vigie can
+# see their domains. Blocks encrypted DNS on the forwarded (MITM) traffic:
+#   - DoT: TCP/UDP port 853 (that port is only ever used by DNS-over-TLS)
+#   - DoH: TCP/UDP port 443 to the well-known public DoH resolvers (never all 443)
+# REJECT (not DROP) so a blocked device fails fast and falls back quickly.
+#
+# Usage:  fennec-dns-force on | off      (run as root via sudo)
+#
+# Honest limits: a device in strict private-DNS mode may fail closed (no internet
+# until this is turned off, and the user notices); IPv6 is not covered (the MITM
+# is IPv4-only); a resolver reachable only over an unlisted IP or via ECH stays
+# invisible. Rules live in a dedicated chain so they are reverted in one step, and
+# they are also cleared when the Watch stops.
+
+# Major public DoH resolver IPs (v4).
+DOH="1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 9.9.9.9 149.112.112.112 94.140.14.14 94.140.15.15 208.67.222.222 208.67.220.220"
+
+enlever() {
+  iptables -D FORWARD -j VIGIE_FORCE 2>/dev/null
+  iptables -F VIGIE_FORCE 2>/dev/null
+  iptables -X VIGIE_FORCE 2>/dev/null
+}
+
+case "$1" in
+  on)
+    enlever
+    iptables -N VIGIE_FORCE
+    # DoT: block port 853 outright.
+    iptables -A VIGIE_FORCE -p tcp --dport 853 -j REJECT --reject-with tcp-reset
+    iptables -A VIGIE_FORCE -p udp --dport 853 -j REJECT --reject-with icmp-port-unreachable
+    # DoH: block 443 (TCP and QUIC/UDP) to the known resolvers only.
+    for ip in $DOH; do
+      iptables -A VIGIE_FORCE -p tcp -d "$ip" --dport 443 -j REJECT --reject-with tcp-reset
+      iptables -A VIGIE_FORCE -p udp -d "$ip" --dport 443 -j REJECT --reject-with icmp-port-unreachable
+    done
+    iptables -I FORWARD -j VIGIE_FORCE
+    ;;
+  off)
+    enlever
+    ;;
+  *)
+    echo "usage: $0 on|off" >&2
+    exit 1
+    ;;
+esac

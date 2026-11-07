@@ -35,6 +35,10 @@ nettoyer() {
   iptables -t nat -D PREROUTING -i "$iface" -j VIGIE_DNS 2>/dev/null
   iptables -t nat -F VIGIE_DNS 2>/dev/null
   iptables -t nat -X VIGIE_DNS 2>/dev/null
+  # Also drop any "Force DNS" block, so it never outlives the Watch.
+  iptables -D FORWARD -j VIGIE_FORCE 2>/dev/null
+  iptables -F VIGIE_FORCE 2>/dev/null
+  iptables -X VIGIE_FORCE 2>/dev/null
   rm -f "$DNSCONF" 2>/dev/null
 }
 trap nettoyer EXIT INT TERM

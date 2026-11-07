@@ -29,6 +29,7 @@ etat_monitor = {
 _proc = None
 _thread = None
 _verrou = threading.Lock()
+_force_dns = False   # "Force DNS": DoT/DoH blocked to flush out hardened devices
 
 _RE_IP = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
 _IGNORER_DOM = re.compile(r"(\.lan|\.local|\.arpa|\.home|\.internal)$", re.I)
@@ -133,6 +134,8 @@ def demarrer(prefixe=None):
     except Exception:
         _proc = None
         return False
+    global _force_dns
+    _force_dns = False
     with _verrou:
         etat_monitor["actif"] = True
         etat_monitor["depuis"] = time.time()
@@ -160,8 +163,28 @@ def arreter():
             except Exception:
                 pass
     _proc = None
+    global _force_dns
+    _force_dns = False   # the monitor script clears the block when it exits
     with _verrou:
         etat_monitor["actif"] = False
+
+
+def forcer_dns(actif):
+    """Toggle 'Force DNS' (block DoT/DoH) via the sudo helper. Only meaningful
+    while the Watch is running (the block sits on the MITM-forwarded traffic)."""
+    global _force_dns
+    if not etat_monitor["actif"]:
+        return False
+    try:
+        subprocess.run(
+            ["sudo", "-n", "/usr/local/bin/fennec-dns-force",
+             "on" if actif else "off"],
+            timeout=10,
+        )
+        _force_dns = bool(actif)
+    except Exception:
+        pass
+    return _force_dns
 
 
 def horodates(cles):
@@ -181,4 +204,5 @@ def instantane():
         hotes = {ip: [k for k, _ in sorted(d.items(), key=lambda kv: kv[1], reverse=True)]
                  for ip, d in etat_monitor["hotes"].items()}
         brut = list(etat_monitor["brut"])[-60:]
-    return {"actif": etat_monitor["actif"], "hotes": hotes, "brut": brut}
+    return {"actif": etat_monitor["actif"], "force": _force_dns,
+            "hotes": hotes, "brut": brut}
