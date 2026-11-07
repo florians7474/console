@@ -92,7 +92,7 @@
   </div>
 
   <script>
-    fetch('/cassage/export/{{ bssid }}').then(function(r){return r.json();}).then(function(e){
+    fetch('/cracking/export/{{ bssid }}').then(function(r){return r.json();}).then(function(e){
       document.getElementById('wait').classList.add('hide');
       if(e.ok){
         document.getElementById('result').classList.remove('hide');

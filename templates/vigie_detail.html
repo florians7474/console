@@ -67,7 +67,7 @@
   <div class="barre">
     <a class="retour" href="/vigie">&larr;</a>
     <div class="titre" id="titre">{{ d.nom }}</div>
-    {% if d.mac %}<button class="edit" onclick="ouvrirNom()" title="Rename">&#9998;</button>{% endif %}
+    {% if d.mac %}<button class="edit" onclick="openName()" title="Rename">&#9998;</button>{% endif %}
     <span class="type" id="type">…</span>
   </div>
 
@@ -101,8 +101,8 @@
       <input id="champNom" type="text" maxlength="40" placeholder="e.g. Aude's iPhone"
              value="{{ d.nom if d.nom not in ['Unknown device', 'This Pi', 'Router'] else '' }}">
       <div class="lignes">
-        <button type="button" class="annuler" onclick="fermerNom()">Cancel</button>
-        <button type="button" class="valider" onclick="enregistrerNom()">Save</button>
+        <button type="button" class="annuler" onclick="closeName()">Cancel</button>
+        <button type="button" class="valider" onclick="saveName()">Save</button>
       </div>
     </div>
   </div>
@@ -141,7 +141,7 @@
     });
 
     // --- Traffic (persistent history + live, timestamped) ---
-    function depuis(t){
+    function since(t){
       var s = Math.max(0, Math.floor(Date.now()/1000 - t));
       if(s < 60) return s + 's ago';
       var m = Math.floor(s/60); if(m < 60) return m + 'm ago';
@@ -149,7 +149,7 @@
       return Math.floor(h/24) + 'd ago';
     }
     function pollTraffic(){
-      fetch('/vigie/trafic/' + IP).then(function(r){ return r.json(); }).then(function(j){
+      fetch('/vigie/traffic/' + IP).then(function(r){ return r.json(); }).then(function(j){
         var box = document.getElementById('traffic');
         var vb = document.getElementById('vpn');
         if(j.vpn){
@@ -171,7 +171,7 @@
         doms.forEach(function(x){
           var row = document.createElement('div'); row.className = 'port';
           var s = document.createElement('span'); s.className = 'svc'; s.textContent = x.d;
-          var tm = document.createElement('span'); tm.className = 'tps'; tm.textContent = depuis(x.t);
+          var tm = document.createElement('span'); tm.className = 'tps'; tm.textContent = since(x.t);
           row.appendChild(s); row.appendChild(tm); box.appendChild(row);
         });
       }).catch(function(){});
@@ -180,13 +180,13 @@
     setInterval(pollTraffic, 2500);
 
     // --- Renommage ---
-    function ouvrirNom(){ document.getElementById('modalNom').classList.add('on');
+    function openName(){ document.getElementById('modalNom').classList.add('on');
                          var c = document.getElementById('champNom'); c.focus(); c.select(); }
-    function fermerNom(){ document.getElementById('modalNom').classList.remove('on'); }
-    function enregistrerNom(){
+    function closeName(){ document.getElementById('modalNom').classList.remove('on'); }
+    function saveName(){
       var nom = document.getElementById('champNom').value;
       var body = new URLSearchParams(); body.set('nom', nom);
-      fetch('/vigie/nom/' + encodeURIComponent(MAC), { method:'POST', body: body })
+      fetch('/vigie/rename/' + encodeURIComponent(MAC), { method:'POST', body: body })
         .then(function(r){ return r.json(); })
         .then(function(j){
           var newNom = j.nom || VENDOR || 'Unknown device';
@@ -199,9 +199,9 @@
             });
             sessionStorage.setItem('vigie_devices', JSON.stringify(c));
           } catch(e){}
-          fermerNom();
+          closeName();
         })
-        .catch(function(){ fermerNom(); });
+        .catch(function(){ closeName(); });
     }
   </script>
 </body>

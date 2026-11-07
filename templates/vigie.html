@@ -77,9 +77,9 @@
     <a class="retour" href="/">&larr;</a>
     <img class="tete" src="/static/vigie.png" alt="">
     <div class="titre">Vigie</div>
-    <button class="scan-btn watch" id="watch" onclick="basculerWatch()">Watch</button>
-    <button class="scan-btn force" id="force" onclick="basculerForce()" style="display:none">Force DNS</button>
-    <button class="scan-btn" id="rescan" onclick="scanner()">Rescan</button>
+    <button class="scan-btn watch" id="watch" onclick="toggleWatch()">Watch</button>
+    <button class="scan-btn force" id="force" onclick="toggleForce()" style="display:none">Force DNS</button>
+    <button class="scan-btn" id="rescan" onclick="runScan()">Rescan</button>
   </div>
 
   <div class="bandeau" id="bandeau" style="display:none"><span class="pulse">●</span> Monitoring traffic — open a device to see the domains it contacts</div>
@@ -96,8 +96,8 @@
   <script>
     var devices = [];
 
-    function sauver(){ try { sessionStorage.setItem('vigie_devices', JSON.stringify(devices)); } catch(e){} }
-    function charger(){ try { var v = sessionStorage.getItem('vigie_devices'); return v ? JSON.parse(v) : null; } catch(e){ return null; } }
+    function save(){ try { sessionStorage.setItem('vigie_devices', JSON.stringify(devices)); } catch(e){} }
+    function loadCache(){ try { var v = sessionStorage.getItem('vigie_devices'); return v ? JSON.parse(v) : null; } catch(e){ return null; } }
 
     function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 
@@ -111,15 +111,15 @@
 
     function ipKey(ip){ return ip.split('.').map(function(n){ return ('00'+n).slice(-3); }).join('.'); }
 
-    function tri(){
+    function sortDevices(){
       devices.sort(function(a,b){
         if(a.inconnu !== b.inconnu) return a.inconnu ? -1 : 1;
         return ipKey(a.ip) < ipKey(b.ip) ? -1 : 1;
       });
     }
 
-    function rendre(){
-      tri();
+    function render(){
+      sortDevices();
       var inconnus = devices.filter(function(d){ return d.inconnu; }).length;
       var n = devices.length;
       document.getElementById('bilan').innerHTML =
@@ -134,7 +134,7 @@
         row.className = 'ligne' + (d.inconnu ? ' inconnu' : '');
 
         var a = document.createElement('a');
-        a.className = 'lien'; a.href = '/vigie/appareil/' + d.ip;
+        a.className = 'lien'; a.href = '/vigie/device/' + d.ip;
         a.innerHTML = '<span class="ico ' + d.type + '">' + iconSvg(d.type) + '</span>' +
           '<div class="infos"><div class="rnom">' + esc(d.nom) + '</div>' +
           '<div class="rbssid">' + esc(d.ip) + (d.mac ? ' · ' + esc(d.mac) : '') + '</div></div>';
@@ -144,42 +144,42 @@
         if(d.pi){ chip = document.createElement('span'); chip.className = 'chip pi'; chip.textContent = 'This Pi'; }
         else if(d.routeur){ chip = document.createElement('span'); chip.className = 'chip pi'; chip.textContent = 'Router'; }
         else if(d.mien){ chip = document.createElement('button'); chip.className = 'chip moi'; chip.textContent = 'Mine';
-                         chip.onclick = function(){ marquer(d, false); }; }
+                         chip.onclick = function(){ mark(d, false); }; }
         else { chip = document.createElement('button'); chip.className = 'chip inc'; chip.textContent = 'Unknown';
-               chip.onclick = function(){ marquer(d, true); }; }
+               chip.onclick = function(){ mark(d, true); }; }
         row.appendChild(chip);
         liste.appendChild(row);
       });
     }
 
-    function marquer(d, mien){
+    function mark(d, mien){
       if(!d.mac) return;
       d.mien = mien;
       d.inconnu = !mien && !d.pi && !d.routeur;
-      rendre();
-      sauver();
+      render();
+      save();
       fetch('/vigie/' + (mien ? 'mien' : 'pasmien') + '/' + encodeURIComponent(d.mac)).catch(function(){});
     }
 
-    function scanner(){
+    function runScan(){
       var btn = document.getElementById('rescan'); btn.disabled = true;
       document.getElementById('bilan').textContent = 'Scanning the network…';
       document.getElementById('liste').innerHTML =
         '<div class="scanning"><div class="radar"><span class="pt" style="top:30%;left:60%"></span><span class="pt" style="top:62%;left:40%"></span></div><div class="txt">Scanning the network…</div></div>';
       fetch('/vigie/data').then(function(r){ return r.json(); }).then(function(data){
         devices = data.appareils || [];
-        rendre();
-        sauver();
+        render();
+        save();
       }).catch(function(){
         document.getElementById('liste').innerHTML = '<div class="vide">Scan failed.<br>Tap "Rescan" to try again.</div>';
         document.getElementById('bilan').textContent = '';
       }).finally(function(){ btn.disabled = false; });
     }
 
-    // --- Monitoring du trafic (MITM bettercap) ---
+    // --- Traffic monitoring (bettercap MITM) ---
     var monitoring = false;
     var forcing = false;
-    function majWatch(){
+    function updateWatch(){
       var b = document.getElementById('watch');
       b.textContent = monitoring ? 'Stop' : 'Watch';
       b.classList.toggle('on', monitoring);
@@ -188,38 +188,38 @@
       var f = document.getElementById('force');
       f.style.display = monitoring ? '' : 'none';
       if(!monitoring){ forcing = false; }
-      majForce();
+      updateForce();
     }
-    function majForce(){
+    function updateForce(){
       var f = document.getElementById('force');
       f.textContent = forcing ? 'DNS forced' : 'Force DNS';
       f.classList.toggle('on', forcing);
     }
-    function basculerWatch(){
+    function toggleWatch(){
       var b = document.getElementById('watch'); b.disabled = true;
       fetch(monitoring ? '/vigie/monitor/stop' : '/vigie/monitor/start')
         .then(function(r){ return r.json(); })
-        .then(function(j){ monitoring = !!j.actif; majWatch(); })
+        .then(function(j){ monitoring = !!j.actif; updateWatch(); })
         .catch(function(){})
         .finally(function(){ b.disabled = false; });
     }
-    function basculerForce(){
+    function toggleForce(){
       if(!monitoring){ return; }
       var f = document.getElementById('force'); f.disabled = true;
       fetch('/vigie/monitor/force?on=' + (forcing ? '0' : '1'))
         .then(function(r){ return r.json(); })
-        .then(function(j){ forcing = !!j.force; majForce(); })
+        .then(function(j){ forcing = !!j.force; updateForce(); })
         .catch(function(){})
         .finally(function(){ f.disabled = false; });
     }
     // current monitoring state (persisted server-side across pages)
     fetch('/vigie/monitor/data').then(function(r){ return r.json(); })
-      .then(function(j){ monitoring = !!j.actif; forcing = !!j.force; majWatch(); }).catch(function(){});
+      .then(function(j){ monitoring = !!j.actif; forcing = !!j.force; updateWatch(); }).catch(function(){});
 
     // On return (from a detail view), re-display the last saved scan without
     // re-running it: it's up to the user to click "Rescan".
-    var memo = charger();
-    if(memo){ devices = memo; rendre(); } else { scanner(); }
+    var memo = loadCache();
+    if(memo){ devices = memo; render(); } else { runScan(); }
   </script>
 </body>
 </html>

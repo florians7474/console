@@ -81,13 +81,13 @@
   <script>
     function stopIt(){
       document.getElementById('stopbtn').textContent = 'Stopping…';
-      fetch('/cassage/stop').catch(()=>{});
+      fetch('/cracking/stop').catch(()=>{});
     }
     function fmt(n){ return n.toLocaleString('en-US'); }
     var timer = setInterval(tick, 1000);
     tick();
     function tick(){
-      fetch('/cassage/etat').then(r=>r.json()).then(e=>{
+      fetch('/cracking/state').then(r=>r.json()).then(e=>{
         document.getElementById('snum').textContent = e.etape_num || 1;
         document.getElementById('stot').textContent = e.etape_total || 1;
         document.getElementById('sname').textContent = e.etape || 'starting…';

@@ -76,26 +76,26 @@
       const m = L.circleMarker([p.lat, p.lon], {
         radius: 9, color: couleur, weight: 2, fillColor: couleur, fillOpacity: 0.75
       }).addTo(carte);
-      m.bindPopup(contenuPopup(p, i));
+      m.bindPopup(popupContent(p, i));
       marqueurs.push(m);
     });
 
-    function contenuPopup(p, i) {
+    function popupContent(p, i) {
       let html = '<div class="pop"><b>' + p.nom + '</b><br>'
                + '<span class="mono">' + p.bssid + '</span>';
       if (p.autorise) {
         html += '<br><span class="ok">in whitelist</span>';
       } else {
-        html += '<button onclick="ajouterListe(' + i + ')">add to whitelist</button>';
+        html += '<button onclick="addToWhitelist(' + i + ')">add to whitelist</button>';
       }
       return html + '</div>';
     }
 
-    function ajouterListe(i) {
+    function addToWhitelist(i) {
       const p = points[i];
       const m = marqueurs[i];
       const corps = new URLSearchParams({ nom: p.nom, bssid: p.bssid });
-      fetch('/liste/ajouter', {
+      fetch('/whitelist/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: corps.toString()
@@ -103,12 +103,12 @@
         if (!r.ok) throw new Error('HTTP ' + r.status);
         p.autorise = true;
         m.setStyle({ color: COUL_OK, fillColor: COUL_OK });
-        m.setPopupContent(contenuPopup(p, i));
+        m.setPopupContent(popupContent(p, i));
       }).catch(() => {
         m.setPopupContent('<div class="pop"><b>' + p.nom + '</b><br>'
           + '<span class="mono">' + p.bssid + '</span>'
           + '<br><span class="ko">add failed, tap again</span>'
-          + '<button onclick="ajouterListe(' + i + ')">retry</button></div>');
+          + '<button onclick="addToWhitelist(' + i + ')">retry</button></div>');
       });
     }
 

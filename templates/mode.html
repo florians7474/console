@@ -46,9 +46,9 @@
     <div class="titre">{{ infos.nom }}</div>
     <span class="pastille {{ 'on' if actif }}"></span>
     {% if actif %}
-      <a class="btn stop" href="/basculer/{{ cle }}">Stop</a>
+      <a class="btn stop" href="/toggle/{{ cle }}">Stop</a>
     {% else %}
-      <a class="btn go" href="/basculer/{{ cle }}">Start</a>
+      <a class="btn go" href="/toggle/{{ cle }}">Start</a>
     {% endif %}
   </div>
 
@@ -88,7 +88,7 @@
       // Preload into a temporary image: while Pwnagotchi's UI isn't ready
       // (error 503), keep the animation and retry, without ever showing the
       // broken-image icon. Only show what actually loads.
-      function rafraichir() {
+      function refresh() {
         var tmp = new Image();
         tmp.onload = function () {
           img.src = tmp.src;
@@ -101,8 +101,8 @@
         };
         tmp.src = "/pwna-ui?t=" + Date.now();
       }
-      rafraichir();
-      setInterval(rafraichir, 2000);
+      refresh();
+      setInterval(refresh, 2000);
     })();
   </script>
 </body>

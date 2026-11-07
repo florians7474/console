@@ -11,7 +11,7 @@ WORDLISTS = {
 }
 
 # Live state of the current/last job, read by the web UI.
-etat_cassage = {
+crack_state = {
     "actif": False,
     "bssid": None,
     "reseau": None,
@@ -32,7 +32,7 @@ etat_cassage = {
     "sans_handshake": False,
 }
 
-_verrou = threading.Lock()
+_lock = threading.Lock()
 _proc = None
 
 RE_TESTES = re.compile(r"(\d+)/(\d+)\s+keys tested\s+\(([\d.]+)\s*k/s\)")
@@ -42,7 +42,7 @@ RE_TESTES_FLUX = re.compile(r"(\d+)\s+keys tested\s+\(([\d.]+)\s*k/s\)")
 
 
 def _reset(bssid, reseau):
-    etat_cassage.update({
+    crack_state.update({
         "actif": True, "bssid": bssid, "reseau": reseau,
         "etape": None, "etape_num": 0, "etape_total": 1,
         "testes": 0, "total": 0, "vitesse": 0.0, "candidat": "",
@@ -96,7 +96,7 @@ def generer_dates(fichier, an_debut=1950, an_fin=2025):
 
 _profils_cache = None
 
-def _charger_profils():
+def _load_profiles():
     """Load the box-profile knowledge base (tiny JSON next to this engine)."""
     global _profils_cache
     if _profils_cache is not None:
@@ -110,18 +110,18 @@ def _charger_profils():
         _profils_cache = []
     return _profils_cache
 
-def profil_pour_essid(essid):
+def profile_for_essid(essid):
     """Return the matching box profile for an ESSID, or None."""
     if not essid:
         return None
-    for p in _charger_profils():
+    for p in _load_profiles():
         if essid.startswith(p.get("prefix", "\0")):
             return p
     return None
 
 def cles_constructeur(essid, bssid):
     """Stage 1: targeted factory keys = box-profile routing + routerkeygen-cli."""
-    profil = profil_pour_essid(essid)
+    profil = profile_for_essid(essid)
     # Known non-target (community hotspot, etc.): skip the whole stage.
     if profil and profil.get("algo") == "ignore":
         return []
@@ -140,12 +140,12 @@ def cles_constructeur(essid, bssid):
             cles.append(c)
     return cles
 
-def mots_essid(essid):
+def essid_words(essid):
     """Extract seed words from a *custom* network name.
     Returns [] for generic/box names (already handled by the factory stage)."""
     if not essid:
         return []
-    if profil_pour_essid(essid):      # known box prefix -> generic name, skip
+    if profile_for_essid(essid):      # known box prefix -> generic name, skip
         return []
     mots = set()
     nu = essid.strip()
@@ -161,15 +161,15 @@ def mots_essid(essid):
             mots.add(t.capitalize())
     return sorted(mots)
 
-def generer_essid(fichier, essid):
+def generate_essid(fichier, essid):
     """Stage 2 seed file: custom-name words (John rules mutate them later)."""
-    mots = mots_essid(essid)
+    mots = essid_words(essid)
     with open(fichier, "w") as f:
         for m in mots:
             f.write(m + "\n")
     return len(mots)
 
-ETAGES = [
+STAGES = [
     {"nom": "factory default keys", "type": "constructeur"},
     {"nom": "ESSID profiling (custom name)", "type": "essid"},
     {"nom": "real cracked keys (probable-wpa)", "type": "wordlist", "fichier": "/usr/share/wordlists/probable-wpa-top4800.txt"},
@@ -200,36 +200,36 @@ def a_un_handshake(pcap, bssid=None):
 def _run(pcap, bssid, reseau, wordlist):
     global _proc
     keyfile = "/tmp/raton_found.key"
-    etat_cassage["etape_total"] = len(ETAGES)
+    crack_state["etape_total"] = len(STAGES)
 
     if not a_un_handshake(pcap, bssid):
-        with _verrou:
-            etat_cassage["actif"] = False
-            etat_cassage["fini"] = True
-            etat_cassage["sans_handshake"] = True
-            etat_cassage["message"] = "No handshake"
+        with _lock:
+            crack_state["actif"] = False
+            crack_state["fini"] = True
+            crack_state["sans_handshake"] = True
+            crack_state["message"] = "No handshake"
         return
 
-    for i, etage in enumerate(ETAGES, start=1):
-        if not etat_cassage["actif"]:
+    for i, etage in enumerate(STAGES, start=1):
+        if not crack_state["actif"]:
             break
 
         # Prepare this stage's wordlist / source
         if etage["type"] == "constructeur":
             cles = cles_constructeur(reseau, bssid)
             if not cles:
-                with _verrou:
-                    etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})
+                with _lock:
+                    crack_state["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})
                 continue
             wl = "/tmp/raton_stage_const.txt"
             with open(wl, "w") as f:
                 f.write("\n".join(cles) + "\n")
         elif etage["type"] == "essid":
             seed = "/tmp/raton_stage_essid.txt"
-            n = generer_essid(seed, reseau)
+            n = generate_essid(seed, reseau)
             if n == 0:
-                with _verrou:
-                    etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})
+                with _lock:
+                    crack_state["journal"].append({"num": i, "nom": etage["nom"], "resultat": "skipped"})
                 continue
             gen = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raton_essid_gen.py")
             wl = "/dev/shm/raton_essid.txt"
@@ -254,16 +254,16 @@ def _run(pcap, bssid, reseau, wordlist):
                 subprocess.run(["awk", "length>=8 && length<=63", base], stdout=f)
 
         est_temps = (etage["type"] == "temps")
-        with _verrou:
-            etat_cassage["etape"] = etage["nom"]
-            etat_cassage["etape_num"] = i
-            etat_cassage["testes"] = 0
-            etat_cassage["total"] = 0
-            etat_cassage["candidat"] = ""
-            etat_cassage["flux"] = (etage["type"] == "regles")
-            etat_cassage["jauge_temps"] = est_temps
-            etat_cassage["temps_total"] = 3600 if est_temps else 0
-            etat_cassage["temps_ecoule"] = 0
+        with _lock:
+            crack_state["etape"] = etage["nom"]
+            crack_state["etape_num"] = i
+            crack_state["testes"] = 0
+            crack_state["total"] = 0
+            crack_state["candidat"] = ""
+            crack_state["flux"] = (etage["type"] == "regles")
+            crack_state["jauge_temps"] = est_temps
+            crack_state["temps_total"] = 3600 if est_temps else 0
+            crack_state["temps_ecoule"] = 0
 
         try:
             if os.path.exists(keyfile):
@@ -321,7 +321,7 @@ def _run(pcap, bssid, reseau, wordlist):
                 encoding="utf-8", errors="replace", bufsize=1,
             )
         except FileNotFoundError:
-            etat_cassage.update({"actif": False, "fini": True, "message": "aircrack-ng not found"})
+            crack_state.update({"actif": False, "fini": True, "message": "aircrack-ng not found"})
             return
 
         if est_temps:
@@ -329,8 +329,8 @@ def _run(pcap, bssid, reseau, wordlist):
             def _horloge(p, src_proc, fin):
                 while p.poll() is None:
                     reste = fin - time.time()
-                    with _verrou:
-                        etat_cassage["temps_ecoule"] = max(0, min(3600, int(3600 - reste)))
+                    with _lock:
+                        crack_state["temps_ecoule"] = max(0, min(3600, int(3600 - reste)))
                     if reste <= 0:
                         for q in (p, src_proc):
                             try:
@@ -370,27 +370,27 @@ def _run(pcap, bssid, reseau, wordlist):
             pass
 
         if cle:
-            with _verrou:
-                etat_cassage["actif"] = False
-                etat_cassage["fini"] = True
-                etat_cassage["trouve"] = True
-                etat_cassage["cle"] = cle
-                etat_cassage["etape_echec"] = i
-                etat_cassage["robustesse"] = _score_robustesse(i, etat_cassage["etape_total"])
-                etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "cracked"})
-                etat_cassage["message"] = "Cracked"
+            with _lock:
+                crack_state["actif"] = False
+                crack_state["fini"] = True
+                crack_state["trouve"] = True
+                crack_state["cle"] = cle
+                crack_state["etape_echec"] = i
+                crack_state["robustesse"] = _robustness_score(i, crack_state["etape_total"])
+                crack_state["journal"].append({"num": i, "nom": etage["nom"], "resultat": "cracked"})
+                crack_state["message"] = "Cracked"
             return
 
-        with _verrou:
-            etat_cassage["journal"].append({"num": i, "nom": etage["nom"], "resultat": "not found"})
+        with _lock:
+            crack_state["journal"].append({"num": i, "nom": etage["nom"], "resultat": "not found"})
 
-    with _verrou:
-        etat_cassage["actif"] = False
-        etat_cassage["fini"] = True
-        etat_cassage["robustesse"] = _score_robustesse(None, etat_cassage["etape_total"])
-        etat_cassage["message"] = "Exhausted"
+    with _lock:
+        crack_state["actif"] = False
+        crack_state["fini"] = True
+        crack_state["robustesse"] = _robustness_score(None, crack_state["etape_total"])
+        crack_state["message"] = "Exhausted"
 
-def _score_robustesse(etage_echec, total):
+def _robustness_score(etage_echec, total):
     """Robustness = the stage that cracked the key. Earlier stage = weaker key."""
     if etage_echec is None:
         return {
@@ -421,27 +421,27 @@ def _score_robustesse(etage_echec, total):
 def _parser(ligne):
     m = RE_TESTES.search(ligne)
     if m:
-        with _verrou:
-            etat_cassage["testes"] = int(m.group(1))
-            etat_cassage["total"] = int(m.group(2))
-            etat_cassage["vitesse"] = float(m.group(3))
+        with _lock:
+            crack_state["testes"] = int(m.group(1))
+            crack_state["total"] = int(m.group(2))
+            crack_state["vitesse"] = float(m.group(3))
     m = RE_CANDIDAT.search(ligne)
     if m:
-        with _verrou:
-            etat_cassage["candidat"] = m.group(1).strip()
+        with _lock:
+            crack_state["candidat"] = m.group(1).strip()
     m = RE_TROUVE.search(ligne)
     if m:
-        with _verrou:
-            etat_cassage["trouve"] = True
-            etat_cassage["cle"] = m.group(1)
+        with _lock:
+            crack_state["trouve"] = True
+            crack_state["cle"] = m.group(1)
 
-def arreter():
+def stop():
     global _proc
     if _proc and _proc.poll() is None:
         _proc.terminate()
-    etat_cassage["actif"] = False
-    etat_cassage["fini"] = True
-    etat_cassage["message"] = "Stopped"
+    crack_state["actif"] = False
+    crack_state["fini"] = True
+    crack_state["message"] = "Stopped"
 
 
 if __name__ == "__main__":
@@ -450,9 +450,9 @@ if __name__ == "__main__":
     bssid = sys.argv[2]
     wl = sys.argv[3] if len(sys.argv) > 3 else WORDLISTS["rockyou"]
     lancer(pcap, bssid, wordlist=wl)
-    while not etat_cassage["fini"]:
-        e = etat_cassage
+    while not crack_state["fini"]:
+        e = crack_state
         print(f"\r[{e['etape']}] {e['testes']}/{e['total']} {e['vitesse']} k/s  try={e['candidat']}   ", end="", flush=True)
         time.sleep(0.5)
     print()
-    print("RESULT:", etat_cassage["message"], "KEY=", etat_cassage["cle"])
+    print("RESULT:", crack_state["message"], "KEY=", crack_state["cle"])

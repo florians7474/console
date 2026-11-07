@@ -63,7 +63,7 @@
 </head>
 <body>
   <div class="barre">
-    <a class="retour" href="/liste">&larr;</a>
+    <a class="retour" href="/whitelist">&larr;</a>
     <div class="titre">Detected networks</div>
     {% if source == 'direct' %}<a class="scan-btn" href="/scan?source=direct&rescan=1">Rescan</a>{% endif %}
   </div>
@@ -84,7 +84,7 @@
       {% if r.bssid in deja %}
         <span class="deja" title="Already allowed">&check;</span>
       {% else %}
-        <form method="post" action="/liste/ajouter">
+        <form method="post" action="/whitelist/add">
           <input type="hidden" name="nom" value="{{ r.nom }}">
           <input type="hidden" name="bssid" value="{{ r.bssid }}">
           <input type="hidden" name="retour" value="scan">
@@ -97,24 +97,24 @@
   </div>
 
   <div class="pied">
-    <a href="#" onclick="ouvrirConfirm('/scan/vider/{{ source }}'); return false;">Clear all</a>
+    <a href="#" onclick="openConfirm('/scan/vider/{{ source }}'); return false;">Clear all</a>
   </div>
 
   <div class="modal" id="modalConfirm">
     <div class="carte">
       <h3>Clear everything?</h3>
       <div class="lignes">
-        <button type="button" class="annuler" onclick="fermerConfirm()">Cancel</button>
-        <button type="button" class="valider" onclick="validerConfirm()">Clear all</button>
+        <button type="button" class="annuler" onclick="closeConfirm()">Cancel</button>
+        <button type="button" class="valider" onclick="confirmAction()">Clear all</button>
       </div>
     </div>
   </div>
 
   <script>
     var confirmUrl = null;
-    function ouvrirConfirm(url){ confirmUrl = url; document.getElementById('modalConfirm').classList.add('on'); }
-    function fermerConfirm(){ document.getElementById('modalConfirm').classList.remove('on'); }
-    function validerConfirm(){ if(confirmUrl){ window.location.href = confirmUrl; } }
+    function openConfirm(url){ confirmUrl = url; document.getElementById('modalConfirm').classList.add('on'); }
+    function closeConfirm(){ document.getElementById('modalConfirm').classList.remove('on'); }
+    function confirmAction(){ if(confirmUrl){ window.location.href = confirmUrl; } }
 
     (function(){
       var liste = document.querySelector('.liste');

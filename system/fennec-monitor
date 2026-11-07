@@ -29,7 +29,7 @@ DNSMASQ=""
 
 # Stop the children and revert the DNS redirection. Runs on any exit, so a leaked
 # DNAT rule never leaves the network pointing at a dead resolver.
-nettoyer() {
+cleanup() {
   [ -n "$DNSMASQ" ] && kill "$DNSMASQ" 2>/dev/null
   [ -n "$BETTER" ]  && kill "$BETTER"  2>/dev/null
   iptables -t nat -D PREROUTING -i "$iface" -j VIGIE_DNS 2>/dev/null
@@ -41,7 +41,7 @@ nettoyer() {
   iptables -X VIGIE_FORCE 2>/dev/null
   rm -f "$DNSCONF" 2>/dev/null
 }
-trap nettoyer EXIT INT TERM
+trap cleanup EXIT INT TERM
 
 # bettercap: ARP spoof of the whole subnet (explicit target = the /24, to spoof
 # even a device that was asleep during the scan), without sniff.

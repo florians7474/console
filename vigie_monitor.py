@@ -21,7 +21,7 @@ import threading
 import time
 from collections import deque, OrderedDict
 
-etat_monitor = {
+monitor_state = {
     "actif": False,
     "depuis": None,
     "hotes": {},                 # ip -> OrderedDict(domain -> ts)
@@ -30,7 +30,7 @@ etat_monitor = {
 
 _proc = None
 _thread = None
-_verrou = threading.Lock()
+_lock = threading.Lock()
 _force_dns = False   # "Force DNS": DoT/DoH blocked to flush out hardened devices
 
 _RE_IP = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
@@ -46,11 +46,11 @@ _VPN_PROTO = {
 }
 _RE_PRIVE = re.compile(r"^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|224\.|0\.)")
 _cache_rdns = {}
-_vu_dst = {}   # (src, dst) -> last ts, to avoid reprocessing the QUIC flow
+_seen_dst = {}   # (src, dst) -> last ts, to avoid reprocessing the QUIC flow
 _vpn = {}      # device ip -> {"type", "endpoint", "ip", "ts"} (tunnel detected)
 
 
-def _est_prive(ip):
+def _is_private(ip):
     return bool(_RE_PRIVE.match(ip))
 
 
@@ -68,83 +68,83 @@ def _rdns(ip):
     return val
 
 
-def _noter(ip, domaine):
-    with _verrou:
-        d = etat_monitor["hotes"].setdefault(ip, OrderedDict())
+def _record(ip, domaine):
+    with _lock:
+        d = monitor_state["hotes"].setdefault(ip, OrderedDict())
         d[domaine] = time.time()
         while len(d) > 60:
             d.popitem(last=False)
 
 
-def _noter_vpn(ip, type_, dst):
-    with _verrou:
+def _record_vpn(ip, type_, dst):
+    with _lock:
         _vpn[ip] = {"type": type_, "endpoint": _rdns(dst), "ip": dst,
                     "ts": time.time()}
 
 
-def _traiter(ligne):
+def _process(ligne):
     # dnsmasq query log: "query[TYPE] <domain> from <device-ip>"
     m = _RE_DNSMASQ.search(ligne)
     if m:
         dom = m.group(1).lower().rstrip(".")
         src = m.group(2).strip()
-        if (_est_prive(src) and dom and not _RE_IP.match(dom)
+        if (_is_private(src) and dom and not _RE_IP.match(dom)
                 and not _IGNORER_DOM.search(dom)):
-            _noter(src, dom)
+            _record(src, dom)
         return
     # tshark fields: ip.src <TAB> ip.dst <TAB> sni <TAB> dns <TAB> protocol
-    champs = ligne.rstrip("\n").split("\t")
-    while len(champs) < 5:
-        champs.append("")
-    src = champs[0].strip()
-    dst = champs[1].strip()
-    sni = champs[2].strip().split(",")[0].strip()
-    dns = champs[3].strip().split(",")[0].strip()
-    proto = champs[4].strip().lower()
+    fields = ligne.rstrip("\n").split("\t")
+    while len(fields) < 5:
+        fields.append("")
+    src = fields[0].strip()
+    dst = fields[1].strip()
+    sni = fields[2].strip().split(",")[0].strip()
+    dns = fields[3].strip().split(",")[0].strip()
+    proto = fields[4].strip().lower()
     # The source must be a local device (filters out server->client reply packets)
-    if not _RE_IP.match(src) or not _est_prive(src):
+    if not _RE_IP.match(src) or not _is_private(src):
         return
     # VPN control packet (WireGuard / OpenVPN / IPsec-IKEv2): the device is
     # tunneling to dst. Record it and stop — do not log the endpoint as a domain.
     vpn = _VPN_PROTO.get(proto)
-    if vpn and _RE_IP.match(dst) and not _est_prive(dst):
-        _noter_vpn(src, vpn, dst)
+    if vpn and _RE_IP.match(dst) and not _is_private(dst):
+        _record_vpn(src, vpn, dst)
         return
     dom = (sni or dns).lower().rstrip(".")
     if dom:
         if _RE_IP.match(dom) or _IGNORER_DOM.search(dom):
             return
-        _noter(src, dom)
+        _record(src, dom)
         return
     # Neither SNI nor DNS (encrypted handshake, e.g. QUIC/ECH): record the destination.
-    if not _RE_IP.match(dst) or _est_prive(dst):
+    if not _RE_IP.match(dst) or _is_private(dst):
         return
     cle = (src, dst)
     now = time.time()
-    if now - _vu_dst.get(cle, 0) < 3:   # anti-flood: once / 3s per (src,dst)
+    if now - _seen_dst.get(cle, 0) < 3:   # anti-flood: once / 3s per (src,dst)
         return
-    _vu_dst[cle] = now
-    if len(_vu_dst) > 5000:
-        _vu_dst.clear()
-    _noter(src, _rdns(dst))
+    _seen_dst[cle] = now
+    if len(_seen_dst) > 5000:
+        _seen_dst.clear()
+    _record(src, _rdns(dst))
 
 
-def _lire(proc):
+def _read(proc):
     for ligne in iter(proc.stdout.readline, ""):
         ligne = ligne.rstrip("\n")
         if not ligne:
             continue
-        etat_monitor["brut"].append(ligne)
+        monitor_state["brut"].append(ligne)
         try:
-            _traiter(ligne)
+            _process(ligne)
         except Exception:
             pass
 
 
-def demarrer(prefixe=None):
+def start(prefix=None):
     """Start the script (bettercap + tshark) and the reader thread."""
     global _proc, _thread
-    if etat_monitor["actif"]:
+    if monitor_state["actif"]:
         return True
     try:
         _proc = subprocess.Popen(
@@ -158,18 +158,18 @@ def demarrer(prefixe=None):
         return False
     global _force_dns
     _force_dns = False
-    with _verrou:
-        etat_monitor["actif"] = True
-        etat_monitor["depuis"] = time.time()
-        etat_monitor["hotes"] = {}
+    with _lock:
+        monitor_state["actif"] = True
+        monitor_state["depuis"] = time.time()
+        monitor_state["hotes"] = {}
         _vpn.clear()
-        etat_monitor["brut"].clear()
-    _thread = threading.Thread(target=_lire, args=(_proc,), daemon=True)
+        monitor_state["brut"].clear()
+    _thread = threading.Thread(target=_read, args=(_proc,), daemon=True)
     _thread.start()
     return True
 
 
-def arreter():
+def stop():
     """Stop bettercap + tshark cleanly (the whole process group)."""
     global _proc
     p = _proc
@@ -188,15 +188,15 @@ def arreter():
     _proc = None
     global _force_dns
     _force_dns = False   # the monitor script clears the block when it exits
-    with _verrou:
-        etat_monitor["actif"] = False
+    with _lock:
+        monitor_state["actif"] = False
 
 
 def forcer_dns(actif):
     """Toggle 'Force DNS' (block DoT/DoH) via the sudo helper. Only meaningful
     while the Watch is running (the block sits on the MITM-forwarded traffic)."""
     global _force_dns
-    if not etat_monitor["actif"]:
+    if not monitor_state["actif"]:
         return False
     try:
         subprocess.run(
@@ -212,7 +212,7 @@ def forcer_dns(actif):
 
 def vpn_info(cles):
     """VPN tunnel detected for one of these keys (device IP), else None."""
-    with _verrou:
+    with _lock:
         for cle in cles:
             v = _vpn.get(cle)
             if v:
@@ -220,22 +220,22 @@ def vpn_info(cles):
     return None
 
 
-def horodates(cles):
+def timestamps(cles):
     """Domains + last timestamp for one or more keys (IP)."""
     out = {}
-    with _verrou:
+    with _lock:
         for cle in cles:
-            for dom, ts in etat_monitor["hotes"].get(cle, {}).items():
+            for dom, ts in monitor_state["hotes"].get(cle, {}).items():
                 if dom not in out or ts > out[dom]:
                     out[dom] = ts
     return out
 
 
-def instantane():
+def snapshot():
     """JSON-able view: active + domains per device + last raw lines."""
-    with _verrou:
+    with _lock:
         hotes = {ip: [k for k, _ in sorted(d.items(), key=lambda kv: kv[1], reverse=True)]
-                 for ip, d in etat_monitor["hotes"].items()}
-        brut = list(etat_monitor["brut"])[-60:]
-    return {"actif": etat_monitor["actif"], "force": _force_dns,
+                 for ip, d in monitor_state["hotes"].items()}
+        brut = list(monitor_state["brut"])[-60:]
+    return {"actif": monitor_state["actif"], "force": _force_dns,
             "hotes": hotes, "brut": brut}

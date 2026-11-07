@@ -97,9 +97,9 @@
           {% if r.cle %}<div class="rcle ok">&#128273; key saved</div>{% else %}<div class="rcle no">no key</div>{% endif %}
         </div>
                 <a class="editer" href="#"
-           onclick='ouvrirEdit("{{ r.bssid }}", {{ r.nom|tojson }}, {{ (r.cle or "")|tojson }}); return false;'
+           onclick='openEdit("{{ r.bssid }}", {{ r.nom|tojson }}, {{ (r.cle or "")|tojson }}); return false;'
            title="Edit">&#9998;</a>
-        <a class="retirer" href="/liste/retirer/{{ r.bssid }}" title="Remove">&times;</a>
+        <a class="retirer" href="/whitelist/remove/{{ r.bssid }}" title="Remove">&times;</a>
       </div>
       {% endfor %}
     {% else %}
@@ -107,7 +107,7 @@
     {% endif %}
   </div>
 
-  <form class="ajout" method="post" action="/liste/ajouter">
+  <form class="ajout" method="post" action="/whitelist/add">
     <input type="text" name="nom" placeholder="Name (e.g. Home)">
     <input type="text" name="bssid" placeholder="AA:BB:CC:DD:EE:FF" required>
     <input type="text" name="cle" placeholder="Wi-Fi key (optional)">
@@ -115,18 +115,18 @@
   </form>
 
   <div class="pied">
-    <a href="#" onclick="ouvrirConfirm('/liste/reset'); return false;">Clear all</a>
+    <a href="#" onclick="openConfirm('/whitelist/reset'); return false;">Clear all</a>
   </div>
 
   <div class="modal" id="modalEdit">
-    <form class="carte" method="post" action="/liste/editer">
+    <form class="carte" method="post" action="/whitelist/edit">
       <h3>Edit network</h3>
       <div class="sous" id="editBssidLabel"></div>
       <input type="hidden" name="bssid" id="editBssid">
       <input type="text" name="nom" id="editNom" placeholder="Name">
       <input type="text" name="cle" id="editCle" placeholder="Wi-Fi key (empty = remove)">
       <div class="lignes">
-        <button type="button" class="annuler" onclick="fermerEdit()">Cancel</button>
+        <button type="button" class="annuler" onclick="closeEdit()">Cancel</button>
         <button type="submit" class="valider">Save</button>
       </div>
     </form>
@@ -136,26 +136,26 @@
     <div class="carte">
       <h3>Clear everything?</h3>
       <div class="lignes">
-        <button type="button" class="annuler" onclick="fermerConfirm()">Cancel</button>
-        <button type="button" class="valider danger" onclick="validerConfirm()">Clear all</button>
+        <button type="button" class="annuler" onclick="closeConfirm()">Cancel</button>
+        <button type="button" class="valider danger" onclick="confirmAction()">Clear all</button>
       </div>
     </div>
   </div>
 
   <script>
     var confirmUrl = null;
-    function ouvrirConfirm(url){ confirmUrl = url; document.getElementById('modalConfirm').classList.add('on'); }
-    function fermerConfirm(){ document.getElementById('modalConfirm').classList.remove('on'); }
-    function validerConfirm(){ if(confirmUrl){ window.location.href = confirmUrl; } }
+    function openConfirm(url){ confirmUrl = url; document.getElementById('modalConfirm').classList.add('on'); }
+    function closeConfirm(){ document.getElementById('modalConfirm').classList.remove('on'); }
+    function confirmAction(){ if(confirmUrl){ window.location.href = confirmUrl; } }
 
-    function ouvrirEdit(bssid, nom, cle){
+    function openEdit(bssid, nom, cle){
       document.getElementById('editBssid').value = bssid;
       document.getElementById('editBssidLabel').textContent = bssid;
       document.getElementById('editNom').value = nom || '';
       document.getElementById('editCle').value = cle || '';
       document.getElementById('modalEdit').classList.add('on');
     }
-    function fermerEdit(){
+    function closeEdit(){
       document.getElementById('modalEdit').classList.remove('on');
     }
 

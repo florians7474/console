@@ -60,8 +60,8 @@
       </div>
       {% if r.bssid in deja %}
         {% if r.handshake %}
-          <a class="tester" href="/cassage/tester/{{ r.bssid }}">Test</a>
-          <a class="exporter" href="/cassage/gpu/{{ r.bssid }}">GPU</a>
+          <a class="tester" href="/cracking/test/{{ r.bssid }}">Test</a>
+          <a class="exporter" href="/cracking/gpu/{{ r.bssid }}">GPU</a>
         {% else %}
           <span class="tester off" title="No usable handshake yet">Test</span>
         {% endif %}
