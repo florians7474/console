@@ -27,7 +27,7 @@ The header shows the Pi's live connection, Ethernet, Wi-Fi with its SSID, or Off
 - **Pwnagotchi** captures handshakes in the background and mirrors its head live in the tile.
 - **Bjorn** scans and probes the network the Pi is currently on. The screen names that network and its subnet before you start, so there is no doubt about what is being audited, and its live console streams inside the tile.
 - **Raton** runs a 9-stage escalation on your own captures (factory keys, ESSID profiling, known cracked keys, dates, common passwords, keyboard patterns, mutation rules, then two one-hour deep passes) and grades the key's robustness, with a one-step handoff to GPU cracking. Captures with no usable handshake are flagged and cannot be tested, so a network is never wrongly reported as robust.
-- **Vigie** scans the current subnet (ARP via nmap) and lists every device with its IP, MAC and vendor. Unknown devices are sorted to the top with an amber accent, a one-tap chip marks a device as yours, and a header count ("6 devices · 2 unknown") tells you at a glance whether something is on the network that shouldn't be. Tap a device to open its detail: open ports and services, a guessed device type (PC, phone, printer, camera, NAS…), hostname, MAC and vendor. You can rename any device (saved per network), and the **Watch** mode turns Vigie into a passive monitor: a bettercap MITM of the whole subnet reveals the domains each device contacts, with a persistent, timestamped history kept per network.
+- **Vigie** scans the current subnet (ARP via nmap) and lists every device with its IP, MAC and vendor. Unknown devices are sorted to the top with an amber accent, a one-tap chip marks a device as yours, and a header count ("6 devices · 2 unknown") tells you at a glance whether something is on the network that shouldn't be. Tap a device to open its detail: open ports and services, a guessed device type (PC, phone, printer, camera, NAS…), hostname, MAC and vendor. You can rename any device (saved per network), and the **Watch** mode turns Vigie into a passive monitor: a bettercap MITM of the whole subnet reveals the domains each device contacts (TLS SNI and QUIC via tshark, plus every cleartext DNS query through an on-demand dnsmasq the Pi redirects port 53 to), with a persistent, timestamped history kept per network. A **Force DNS** toggle blocks DoT and the main DoH resolvers to push hardened devices back onto readable DNS, and a device running a VPN is detected and flagged (WireGuard tunnel plus endpoint) instead of showing blank.
 - **Carte** plots captured handshakes on a live map using the position read at capture time (Pwnagotchi's GPS plugin writes a `.gps.json` next to each handshake when a fix is available). Markers are colour-coded by whitelist status, and tapping one adds that network to the allowed list. Phase 1 (geolocating captures) is in; full wardriving comes next.
 
 ## Legal scope
@@ -72,7 +72,7 @@ Click or tap a tile to activate the matching module.
 - **Pwnagotchi**: jayofelony fork in an isolated venv, driven through systemd
 - **Bjorn**: infinition/Bjorn, driven through systemd, live console in the tile
 - **Raton**: in-house WPA cracking engine (aircrack-ng, CPU), staged escalation, GPU export
-- **Vigie**: in-house device radar and traffic monitor (nmap for discovery and port scans, bettercap MITM for per-device domains, persistent per-network history)
+- **Vigie**: in-house device radar and traffic monitor (nmap for discovery and port scans, bettercap MITM, tshark for SNI/QUIC and an on-demand dnsmasq for DNS, optional Force DNS against DoT/DoH, VPN detection, persistent per-network history)
 - Automatic detection of the monitor-mode Wi-Fi adapter at launch
 
 ## Roadmap
@@ -86,6 +86,7 @@ Click or tap a tile to activate the matching module.
 - [x] Raton module (WPA cracking, 9-stage escalation, GPU export)
 - [x] Live connection indicator (Ethernet / Wi-Fi / Offline)
 - [x] Vigie module (device radar, per-device recon, naming, and traffic watch via MITM)
+- [x] Vigie DNS capture (Pi as resolver), Force DNS against DoT/DoH, and VPN detection
 - [x] Carte module – phase 1 (geolocate captured handshakes on a live map)
 - [ ] Real Wi-Fi join/disconnect from the connection manager (nmcli)
 - [ ] Carte module – phase 2 (full wardriving: map every network, offline tiles)

@@ -41,7 +41,7 @@ Fennec :5000 · Pwnagotchi :8080 · Bjorn :8000
 | Bjorn | LAN scan/attack (infinition/Bjorn) | Done (install + control + live console) |
 | Raton | Offline WPA cracking (custom) | Done (9-stage engine + intelligence base, tested live); GPU export to polish |
 | Connexion | Join a whitelisted network (Wi-Fi lock step 2) | Stub only (stores target in memory, no real nmcli yet) |
-| Vigie | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, and live traffic monitoring via bettercap MITM with saved history) |
+| Vigie | Network radar + per-device traffic watch | Done (ARP scan, per-device port scan/type, device naming, live traffic monitoring via bettercap MITM with saved history, DNS capture via on-demand dnsmasq, Force DNS against DoT/DoH, and VPN detection) |
 | Carte | Map of geolocated captures, then wardriving (WiGLE-style) | Phase 1 done (GPS geolocation of handshakes, tested outdoors); phase 2 wardriving to do |
 
 Pwnagotchi and Bjorn run "behind" Fennec: installed on the Pi, started/stopped
@@ -100,18 +100,30 @@ coded in-house.
 - Traffic watch ("Watch" button): starts a MITM of the whole subnet via bettercap
   (/usr/local/bin/fennec-monitor, sudo) to reveal the domains each device
   contacts. It runs as an exclusive mode (stops Pwnagotchi/Bjorn/Raton, and they
-  stop it). The capture engine is vigie_monitor.py: it reads bettercap's sniff
-  output, pulls the device (hostname) + domain from the DNS and TLS-SNI lines,
-  and keys traffic by the device and its resolved IP. Reading tolerates non-UTF8
-  bytes; bettercap is stopped cleanly on Stop and on Fennec exit (atexit), so the
-  network isn't left under ARP spoofing.
+  stop it). The capture script runs two sources on the forwarded traffic: tshark
+  (TLS SNI, QUIC destination) and an on-demand dnsmasq the Pi redirects port 53 to
+  (dedicated nat chain VIGIE_DNS), which answers and logs every cleartext DNS query
+  per device. The engine vigie_monitor.py reads both, keyed by device IP, and
+  tolerates non-UTF8 bytes. bettercap, dnsmasq and the DNS redirect are all torn
+  down on Stop and on Fennec exit (atexit), so the network is never left under ARP
+  spoofing or without DNS.
 - Traffic history is persistent: domains per device are kept in
   historique_trafic.json (gitignored), scoped per network, each with a last-seen
   timestamp shown as "X ago". The detail shows the saved history even when the
   monitor is off, and merges live domains while it runs. Flushed to disk at most
   every ~20s and on Stop, to spare the SD card.
-- Limit: a privacy-hardened device (Android Private DNS = encrypted DNS, plus
-  QUIC/HTTP3) shows little or nothing, since its DNS and SNI are encrypted.
+- Force DNS (amber toggle, only while watching): /usr/local/bin/fennec-dns-force
+  (sudo) adds a FORWARD chain VIGIE_FORCE that REJECTs DoT (port 853) and the main
+  public DoH resolvers (port 443, curated IP list), pushing a hardened device back
+  onto cleartext DNS so dnsmasq can log it. Reverted on toggle-off and on Stop.
+- VPN detection: tshark also passes WireGuard handshake packets (wg.type 1, rare,
+  not the data flood); a device seen tunnelling is flagged on its detail page
+  (WireGuard + reverse-resolved endpoint) instead of logging the endpoint as a
+  contacted domain.
+- Remaining limits: a full-tunnel VPN stays opaque by design (only the tunnel and
+  its endpoint are shown); ECH and some QUIC leave the SNI unreadable; IPv6 is not
+  MITM'd (ARP spoof is IPv4 only); a device in strict private-DNS mode may fail
+  closed under Force DNS until it is turned off.
 
 ## Raton — cracking engine
 Local cracking = aircrack-ng (stable on ARM, CPU). hashcat is NOT used locally
@@ -227,10 +239,11 @@ Notes:
 - Bjorn's web server is patched at install time (allow_reuse_address + a fixed
   port 8000): upstream jumps to 8001 on a quick Stop/Start because the port is
   still in TIME_WAIT, which breaks the embedded view. The patch keeps it on 8000.
-- Vigie uses three small sudo helpers installed to /usr/local/bin:
-  fennec-netscan (nmap ARP sweep), fennec-monitor (bettercap MITM + sniff) and
-  fennec-clear-handshakes (delete Pwnagotchi captures). Each is granted by an
-  exact-path rule in fennec.sudoers, so no broad sudo is given.
+- Vigie uses small sudo helpers installed to /usr/local/bin: fennec-netscan
+  (nmap ARP sweep), fennec-monitor (bettercap MITM + tshark + on-demand dnsmasq),
+  fennec-dns-force (Force DNS: block DoT/DoH) and fennec-clear-handshakes (delete
+  Pwnagotchi captures). Each is granted by an exact-path rule in fennec.sudoers,
+  so no broad sudo is given.
 
 ## Dev loop
 Edited directly on the Pi and pushed from there.
@@ -242,10 +255,10 @@ Editing any project file: nano ~/console/<file>.
   Currently a stub that only stores the target in memory.
 - Wi-Fi lock step 3: Bjorn start gate (ethernet allowed; on Wi-Fi the connected
   BSSID must be in the whitelist)
-- Vigie v3 (optional): make the Pi the network's DNS server so even hardened
-  devices (encrypted DNS + QUIC) reveal their resolutions. v1 (device radar) and
-  v2 (per-device port scan/type, naming, and traffic watch via MITM with saved
-  history) are done.
+- Vigie DNS capture (v3): done. During a Watch the Pi is the network's DNS
+  resolver (dnsmasq + port-53 redirect), with a Force DNS toggle against DoT/DoH
+  and WireGuard VPN detection. v1 (device radar) and v2 (per-device port scan/type,
+  naming, traffic watch via MITM with saved history) were already done.
 - Carte phase 1: done. The Pwnagotchi GPS plugin writes a .gps.json next to each
   handshake when a fix is available, and the Carte tile plots them (colour-coded
   by whitelist status, tap to add to the whitelist). The plugin is enabled in
