@@ -236,7 +236,7 @@ def _run(pcap, bssid, reseau, wordlist):
             with open(wl, "w") as f:
                 p1 = subprocess.Popen(["python3", gen, seed],
                                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-                subprocess.run(["head", "-n", "100000"], stdin=p1.stdout, stdout=f)
+                subprocess.run(["head", "-n", "300000"], stdin=p1.stdout, stdout=f)
                 p1.stdout.close()
                 p1.wait()
         elif etage["type"] == "genere":
