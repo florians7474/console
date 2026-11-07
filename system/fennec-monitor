@@ -85,14 +85,17 @@ EOF
 fi
 
 # tshark: TLS ClientHello (SNI), QUIC connections (UDP/443 -> destination),
-# cleartext DNS queries, and WireGuard handshakes (VPN detection: only the rare
-# handshake packets, not the data flood). Foreground = keeps the script alive.
-# One line per event:  ip.src <TAB> ip.dst <TAB> sni <TAB> dns <TAB> wg.type
+# cleartext DNS queries, and VPN control packets for detection (only the rare
+# handshake/control packets, never the data flood): WireGuard handshake, ISAKMP
+# (IPsec/IKEv2/L2TP, UDP 500/4500) and OpenVPN hard-reset/control. The last field
+# is the protocol name, used to label the tunnel. Foreground = keeps the script
+# alive. One line per event:
+#   ip.src <TAB> ip.dst <TAB> sni <TAB> dns <TAB> protocol
 tshark -i "$iface" -l -n -Q \
-  -Y 'tls.handshake.type == 1 || udp.port == 443 || (dns.flags.response == 0 && dns.qry.name) || wg.type == 1' \
+  -Y 'tls.handshake.type == 1 || udp.port == 443 || (dns.flags.response == 0 && dns.qry.name) || wg.type == 1 || isakmp || openvpn.opcode in {1,2,7,8}' \
   -T fields \
   -e ip.src \
   -e ip.dst \
   -e tls.handshake.extensions_server_name \
   -e dns.qry.name \
-  -e wg.type
+  -e _ws.col.protocol

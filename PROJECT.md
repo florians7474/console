@@ -116,10 +116,13 @@ coded in-house.
   (sudo) adds a FORWARD chain VIGIE_FORCE that REJECTs DoT (port 853) and the main
   public DoH resolvers (port 443, curated IP list), pushing a hardened device back
   onto cleartext DNS so dnsmasq can log it. Reverted on toggle-off and on Stop.
-- VPN detection: tshark also passes WireGuard handshake packets (wg.type 1, rare,
-  not the data flood); a device seen tunnelling is flagged on its detail page
-  (WireGuard + reverse-resolved endpoint) instead of logging the endpoint as a
-  contacted domain.
+- VPN detection: tshark also passes VPN control packets only (rare, not the data
+  flood) — WireGuard handshake, ISAKMP (IPsec/IKEv2/L2TP on UDP 500/4500) and
+  OpenVPN hard-reset/control — and the protocol column labels the tunnel. A device
+  seen tunnelling is flagged on its detail page (type + reverse-resolved endpoint)
+  instead of logging the endpoint as a contacted domain. A proprietary tunnel
+  disguised as HTTPS/DTLS on 443 cannot be told apart from normal web traffic and
+  is not labelled.
 - Remaining limits: a full-tunnel VPN stays opaque by design (only the tunnel and
   its endpoint are shown); ECH and some QUIC leave the SNI unreadable; IPv6 is not
   MITM'd (ARP spoof is IPv4 only); a device in strict private-DNS mode may fail
@@ -257,7 +260,8 @@ Editing any project file: nano ~/console/<file>.
   BSSID must be in the whitelist)
 - Vigie DNS capture (v3): done. During a Watch the Pi is the network's DNS
   resolver (dnsmasq + port-53 redirect), with a Force DNS toggle against DoT/DoH
-  and WireGuard VPN detection. v1 (device radar) and v2 (per-device port scan/type,
+  and VPN detection (WireGuard, OpenVPN, IPsec/IKEv2). v1 (device radar) and v2
+  (per-device port scan/type,
   naming, traffic watch via MITM with saved history) were already done.
 - Carte phase 1: done. The Pwnagotchi GPS plugin writes a .gps.json next to each
   handshake when a fix is available, and the Carte tile plots them (colour-coded

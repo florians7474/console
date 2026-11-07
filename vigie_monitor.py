@@ -5,8 +5,10 @@ sources whose lines are merged on the same stdout:
   - dnsmasq, acting as the DNS resolver: every port-53 query transiting the Pi
     is redirected to it, so it logs the full domain name per device, even for a
     device pointed at a public resolver. Lines:  query[A] <domain> from <ip>
-  - tshark: SNI of plain TLS (TCP/443) AND of QUIC (UDP/443, HTTP/3), plus the
-    destination of encrypted handshakes. Tab fields:  ip.src  ip.dst  sni  dns
+  - tshark: SNI of plain TLS (TCP/443) AND of QUIC (UDP/443, HTTP/3), the
+    destination of encrypted handshakes, and VPN control packets (WireGuard,
+    OpenVPN, IPsec/IKEv2) used to flag a tunnelling device by protocol.
+    Tab fields:  ip.src  ip.dst  sni  dns  protocol
 
 Aggregated per device, key = source IP (the device IP in both sources).
 """
@@ -36,6 +38,12 @@ _IGNORER_DOM = re.compile(r"(\.lan|\.local|\.arpa|\.home|\.internal)$", re.I)
 # dnsmasq query log line: "query[A] example.com from 192.168.1.42"
 _RE_DNSMASQ = re.compile(
     r"query\[[^\]]+\]\s+(\S+)\s+from\s+(\d{1,3}(?:\.\d{1,3}){3})")
+# tshark protocol-column name -> VPN label (for detection)
+_VPN_PROTO = {
+    "wireguard": "WireGuard",
+    "openvpn": "OpenVPN",
+    "isakmp": "IPsec/IKEv2",
+}
 _RE_PRIVE = re.compile(r"^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|224\.|0\.)")
 _cache_rdns = {}
 _vu_dst = {}   # (src, dst) -> last ts, to avoid reprocessing the QUIC flow
@@ -84,7 +92,7 @@ def _traiter(ligne):
                 and not _IGNORER_DOM.search(dom)):
             _noter(src, dom)
         return
-    # tshark fields: ip.src <TAB> ip.dst <TAB> sni <TAB> dns <TAB> wg.type
+    # tshark fields: ip.src <TAB> ip.dst <TAB> sni <TAB> dns <TAB> protocol
     champs = ligne.rstrip("\n").split("\t")
     while len(champs) < 5:
         champs.append("")
@@ -92,14 +100,15 @@ def _traiter(ligne):
     dst = champs[1].strip()
     sni = champs[2].strip().split(",")[0].strip()
     dns = champs[3].strip().split(",")[0].strip()
-    wg = champs[4].strip()
+    proto = champs[4].strip().lower()
     # The source must be a local device (filters out server->client reply packets)
     if not _RE_IP.match(src) or not _est_prive(src):
         return
-    # WireGuard handshake: the device is tunneling to dst (a VPN). Record it and
-    # stop — do not log the endpoint as a contacted domain.
-    if wg and _RE_IP.match(dst) and not _est_prive(dst):
-        _noter_vpn(src, "WireGuard", dst)
+    # VPN control packet (WireGuard / OpenVPN / IPsec-IKEv2): the device is
+    # tunneling to dst. Record it and stop — do not log the endpoint as a domain.
+    vpn = _VPN_PROTO.get(proto)
+    if vpn and _RE_IP.match(dst) and not _est_prive(dst):
+        _noter_vpn(src, vpn, dst)
         return
     dom = (sni or dns).lower().rstrip(".")
     if dom:
