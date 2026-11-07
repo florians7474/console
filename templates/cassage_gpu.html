@@ -17,16 +17,44 @@
     }
     .retour { color:#e6edf3; text-decoration:none; font-size:24px; line-height:1; padding:2px 8px; }
     .titre { font-size:16px; font-weight:600; flex:1; }
-    .corps { flex:1 1 auto; display:flex; flex-direction:column; padding:14px 18px; overflow-y:auto; }
-    .cible { font-size:13px; color:#8b949e; margin-bottom:12px; }
+    .corps { flex:1 1 auto; display:flex; flex-direction:column; padding:12px 16px; overflow-y:auto; }
+    .cible { font-size:13px; color:#8b949e; margin-bottom:10px; }
     .cible b { color:#e6edf3; }
-    .label { font-size:11px; color:#8b949e; text-transform:uppercase; letter-spacing:.5px; margin:10px 0 5px; }
-    .box {
-      font-size:11px; color:#c9d1d9; font-family:ui-monospace,Consolas,monospace;
-      background:#161b22; border:1px solid #30363d; border-radius:6px; padding:8px 10px;
-      word-break:break-all; white-space:pre-wrap; max-height:120px; overflow-y:auto;
+    .step { display:flex; gap:9px; margin:9px 0 4px; }
+    .num {
+      flex:0 0 20px; height:20px; border-radius:50%; background:#1f6feb; color:#fff;
+      font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
     }
-    .cmd { color:#f0883e; }
+    .steptxt { font-size:13px; line-height:1.35; padding-top:1px; }
+    .url {
+      font-family:ui-monospace,Consolas,monospace; color:#58a6ff; font-size:13px;
+      background:#161b22; border:1px solid #30363d; border-radius:6px;
+      padding:6px 9px; margin:4px 0 2px 29px; word-break:break-all;
+    }
+    .btn {
+      display:inline-block; margin:5px 0 2px 29px; padding:8px 14px; border-radius:6px;
+      background:#238636; color:#fff; font-size:13px; font-weight:600;
+      text-decoration:none; border:none; cursor:pointer;
+    }
+    .cmdwrap { margin:5px 0 2px 29px; position:relative; }
+    textarea.cmd {
+      width:100%; height:66px; resize:none;
+      font-size:11px; color:#f0883e; font-family:ui-monospace,Consolas,monospace;
+      background:#161b22; border:1px solid #30363d; border-radius:6px; padding:8px 10px;
+      line-height:1.4;
+    }
+    .copy {
+      position:absolute; top:6px; right:6px; padding:3px 9px; border-radius:5px;
+      background:#21262d; color:#c9d1d9; border:1px solid #30363d; font-size:11px; cursor:pointer;
+    }
+    .note { font-size:11px; color:#8b949e; margin:4px 0 0 29px; line-height:1.35; }
+    .label { font-size:11px; color:#8b949e; text-transform:uppercase; letter-spacing:.5px; margin:12px 0 4px; }
+    details .box {
+      font-size:10px; color:#c9d1d9; font-family:ui-monospace,Consolas,monospace;
+      background:#161b22; border:1px solid #30363d; border-radius:6px; padding:8px 10px;
+      word-break:break-all; white-space:pre-wrap; max-height:90px; overflow-y:auto; margin-top:4px;
+    }
+    summary { font-size:11px; color:#8b949e; cursor:pointer; }
     .wait { font-size:13px; color:#8b949e; text-align:center; margin-top:40px; }
     .err { font-size:13px; color:#da3633; text-align:center; margin-top:40px; }
     .hide { display:none; }
@@ -45,20 +73,38 @@
     <div id="err" class="err hide"></div>
 
     <div id="result" class="hide">
-      <div class="label">Hash file (.hc22000)</div>
-      <div class="box" id="hash"></div>
-      <div class="label">Run on a GPU machine</div>
-      <div class="box cmd" id="cmd"></div>
+      <div class="step"><div class="num">1</div><div class="steptxt">On your computer, open Fennec in a browser:</div></div>
+      <div class="url">http://fennec.local:5000</div>
+
+      <div class="step"><div class="num">2</div><div class="steptxt">Download the hash file to that computer:</div></div>
+      <a class="btn" id="dl" href="#" download>Download .hc22000</a>
+
+      <div class="step"><div class="num">3</div><div class="steptxt">Paste this in a terminal (Kali, etc.) and it runs:</div></div>
+      <div class="cmdwrap">
+        <textarea class="cmd" id="cmd" readonly></textarea>
+        <button class="copy" id="copy">Copy</button>
+      </div>
+      <div class="note" id="note"></div>
+
+      <div class="label">Hash (if you prefer to copy it by hand)</div>
+      <details><summary>Show hash</summary><div class="box" id="hash"></div></details>
     </div>
   </div>
 
   <script>
-    fetch('/cassage/export/{{ bssid }}').then(r=>r.json()).then(e=>{
+    fetch('/cassage/export/{{ bssid }}').then(function(r){return r.json();}).then(function(e){
       document.getElementById('wait').classList.add('hide');
       if(e.ok){
         document.getElementById('result').classList.remove('hide');
+        document.getElementById('dl').href = e.telecharger;
+        document.getElementById('cmd').value = e.commande;
         document.getElementById('hash').textContent = e.hash;
-        document.getElementById('cmd').textContent = e.commande;
+        var note = document.getElementById('note');
+        if(e.type === 'wordlist'){
+          note.textContent = 'The command assumes the file landed in ~/Downloads. On Kali, extract rockyou once if needed: sudo gunzip /usr/share/wordlists/rockyou.txt.gz';
+        } else {
+          note.textContent = 'Targeted mask for this box model. The command assumes the file landed in ~/Downloads. No wordlist needed.';
+        }
       } else {
         var err = document.getElementById('err');
         err.classList.remove('hide');
@@ -69,6 +115,19 @@
       var err = document.getElementById('err');
       err.classList.remove('hide');
       err.textContent = 'Export failed';
+    });
+
+    document.getElementById('copy').addEventListener('click', function(){
+      var cmd = document.getElementById('cmd');
+      cmd.focus();
+      cmd.select();
+      cmd.setSelectionRange(0, 99999);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      var btn = document.getElementById('copy');
+      btn.textContent = ok ? 'Copied' : 'Select + Ctrl-C';
+      window.getSelection().removeAllRanges();
+      setTimeout(function(){ btn.textContent = 'Copy'; }, 1500);
     });
   </script>
 </body>

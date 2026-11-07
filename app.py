@@ -569,13 +569,49 @@ def cassage_export(bssid):
         hash_hc = ""
     if not hash_hc:
         return jsonify({"ok": False, "erreur": "No crackable handshake in this capture"})
-    commande = "hashcat -m 22000 " + os.path.basename(sortie) + " wordlist.txt"
+    fichier = os.path.basename(sortie)
+    profil = raton_engine.profil_pour_essid(capture["nom"])
+    fmt = (profil or {}).get("format") or {}
+    masque = fmt.get("mask", "")
+    if profil and profil.get("algo") == "mask" and "?" in masque:
+        commande = "cd ~/Downloads && hashcat -m 22000 " + fichier + " -a 3 " + masque
+        type_attaque = "mask"
+    else:
+        commande = ("cd ~/Downloads && hashcat -m 22000 " + fichier
+                    + " /usr/share/wordlists/rockyou.txt"
+                    + " -r /usr/share/hashcat/rules/best64.rule")
+        type_attaque = "wordlist"
     return jsonify({
         "ok": True,
-        "fichier": os.path.basename(sortie),
+        "fichier": fichier,
         "hash": hash_hc,
         "commande": commande,
+        "telecharger": "/cassage/telecharger/" + bssid,
+        "type": type_attaque,
     })
+
+@app.route("/cassage/telecharger/<bssid>")
+def cassage_telecharger(bssid):
+    autorises = {r["bssid"] for r in charger_liste()}
+    if bssid not in autorises:
+        abort(404)
+    sortie = "/tmp/raton_export_" + bssid.replace(":", "") + ".hc22000"
+    if not (os.path.exists(sortie) and os.path.getsize(sortie) > 0):
+        capture = next((c for c in lire_handshakes() if c["bssid"] == bssid), None)
+        if not capture:
+            abort(404)
+        pcap = os.path.join(HANDSHAKES_DIR, capture["fichier"])
+        try:
+            subprocess.run(["hcxpcapngtool", "-o", sortie, pcap],
+                           capture_output=True, text=True, timeout=30)
+        except Exception:
+            abort(404)
+    if not (os.path.exists(sortie) and os.path.getsize(sortie) > 0):
+        abort(404)
+    from flask import send_file
+    return send_file(sortie, as_attachment=True,
+                     download_name=os.path.basename(sortie),
+                     mimetype="text/plain")
 
 @app.route("/cassage/gpu/<bssid>")
 def cassage_gpu(bssid):
