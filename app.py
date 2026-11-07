@@ -476,14 +476,14 @@ def mode(nom):
             capture = next((c for c in read_handshakes()
                             if c["bssid"] == e.get("bssid")), None)
             if capture:
-                return render_template("cassage_resultat.html", c=capture)
+                return render_template("crack_result.html", c=capture)
         deja = {r["bssid"] for r in load_whitelist()}
         captures = read_handshakes()
         for cap in captures:
             # Only check for a handshake on allowed networks (the only ones that
             # show a Test button), to avoid useless scans.
             cap["handshake"] = cap["bssid"] in deja and capture_a_handshake(cap["fichier"])
-        return render_template("cassage.html", captures=captures, deja=deja)
+        return render_template("cracking.html", captures=captures, deja=deja)
 
     if nom == "pwnagotchi":
         actif = est_actif("pwnagotchi")
@@ -543,7 +543,7 @@ def crack_test(bssid):
     etat["reseau"] = capture["nom"]
     pcap = os.path.join(HANDSHAKES_DIR, capture["fichier"])
     raton_engine.lancer(pcap, bssid, capture["nom"])
-    return render_template("cassage_resultat.html", c=capture)
+    return render_template("crack_result.html", c=capture)
 
 @app.route("/cracking/export/<bssid>")
 def crack_export(bssid):
@@ -660,13 +660,13 @@ def carte():
             })
         else:
             sans_position += 1
-    return render_template("carte.html", points=points, sans_position=sans_position)
+    return render_template("map.html", points=points, sans_position=sans_position)
 
 # ---------- Connection ----------
 
 @app.route("/connexion")
 def connexion():
-    return render_template("connexion.html", reseaux=load_whitelist(), actuel=etat["reseau"])
+    return render_template("connection.html", reseaux=load_whitelist(), actuel=etat["reseau"])
 
 @app.route("/connexion/vers/<bssid>")
 def connexion_vers(bssid):
