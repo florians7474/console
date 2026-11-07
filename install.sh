@@ -26,9 +26,15 @@ echo "wireshark-common wireshark-common/install-setuid boolean false" | sudo deb
 sudo DEBIAN_FRONTEND=noninteractive apt install -y \
     git python3-venv python3-dev python3-flask aircrack-ng bettercap golang \
     libpcap-dev libdbus-1-dev libglib2.0-dev pkg-config build-essential \
-    liblgpio-dev swig libcap-dev iw tshark \
+    liblgpio-dev swig libcap-dev iw tshark dnsmasq \
     john hcxtools nmap qtbase5-dev qt5-qmake libssl-dev \
     chromium xserver-xorg xinit xserver-xorg-legacy
+
+# dnsmasq (Vigie DNS capture): Fennec starts its own dnsmasq instance on demand
+# during a Watch. Disable the system service so it never holds port 53 and never
+# clashes with the on-demand instance.
+echo "==> Disabling the system dnsmasq service (Fennec runs its own)..."
+sudo systemctl disable --now dnsmasq 2>/dev/null || true
 
 # --- 1b. Enable SPI (required by Bjorn's e-paper display) ---
 # Without SPI, /dev/spidev0.0 does not exist and Bjorn crashes on display init.

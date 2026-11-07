@@ -1,11 +1,14 @@
-"""Vigie monitoring engine: MITM (bettercap) to route the traffic through the Pi,
-+ SNI/DNS capture via tshark (the Wireshark engine), which reads the SNI of plain
-TLS (TCP/443) AND of QUIC (UDP/443, HTTP/3) — which bettercap did not do.
-Aggregated per device, key = source IP (given directly by tshark).
+"""Vigie monitoring engine. The sudo script /usr/local/bin/fennec-monitor starts
+bettercap (arp.spoof) to route the subnet through the Pi, then two capture
+sources whose lines are merged on the same stdout:
 
-The sudo script /usr/local/bin/fennec-monitor starts bettercap (arp.spoof) then
-tshark with tab-separated "fields" output:  ip.src <TAB> sni <TAB> dns
-Only one domain column is filled per line; we take the first one.
+  - dnsmasq, acting as the DNS resolver: every port-53 query transiting the Pi
+    is redirected to it, so it logs the full domain name per device, even for a
+    device pointed at a public resolver. Lines:  query[A] <domain> from <ip>
+  - tshark: SNI of plain TLS (TCP/443) AND of QUIC (UDP/443, HTTP/3), plus the
+    destination of encrypted handshakes. Tab fields:  ip.src  ip.dst  sni  dns
+
+Aggregated per device, key = source IP (the device IP in both sources).
 """
 import os
 import re
@@ -29,6 +32,9 @@ _verrou = threading.Lock()
 
 _RE_IP = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
 _IGNORER_DOM = re.compile(r"(\.lan|\.local|\.arpa|\.home|\.internal)$", re.I)
+# dnsmasq query log line: "query[A] example.com from 192.168.1.42"
+_RE_DNSMASQ = re.compile(
+    r"query\[[^\]]+\]\s+(\S+)\s+from\s+(\d{1,3}(?:\.\d{1,3}){3})")
 _RE_PRIVE = re.compile(r"^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|224\.|0\.)")
 _cache_rdns = {}
 _vu_dst = {}   # (src, dst) -> last ts, to avoid reprocessing the QUIC flow
@@ -61,6 +67,15 @@ def _noter(ip, domaine):
 
 
 def _traiter(ligne):
+    # dnsmasq query log: "query[TYPE] <domain> from <device-ip>"
+    m = _RE_DNSMASQ.search(ligne)
+    if m:
+        dom = m.group(1).lower().rstrip(".")
+        src = m.group(2).strip()
+        if (_est_prive(src) and dom and not _RE_IP.match(dom)
+                and not _IGNORER_DOM.search(dom)):
+            _noter(src, dom)
+        return
     # tshark fields: ip.src <TAB> ip.dst <TAB> sni <TAB> dns
     champs = ligne.rstrip("\n").split("\t")
     while len(champs) < 4:

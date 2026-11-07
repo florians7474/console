@@ -1,7 +1,19 @@
 #!/usr/bin/env bash
-# Vigie monitoring: MITM (bettercap arp.spoof of the WHOLE subnet) to route the
-# traffic through the Pi, + tshark to extract the SNI (TLS), DNS queries, and the
-# destination of encrypted connections (QUIC). Runs as root.
+# Vigie monitoring. bettercap (arp.spoof of the WHOLE subnet) routes the traffic
+# through the Pi. Two capture sources are merged on stdout and read by
+# vigie_monitor.py:
+#
+#   - dnsmasq: the Pi becomes the DNS resolver. Every port-53 query that transits
+#     the Pi is DNAT-redirected to a local dnsmasq, which answers it (devices keep
+#     working) and logs it per client. This yields the full domain name of every
+#     device using cleartext DNS, even one pointed at a public resolver.
+#     Log lines contain:  query[A] <domain> from <device-ip>
+#
+#   - tshark: TLS ClientHello (SNI), QUIC destination (encrypted handshakes), and
+#     DNS seen on the wire. Lines:  ip.src <TAB> ip.dst <TAB> sni <TAB> dns
+#
+# Runs as root (via sudo). The DNS redirection is reverted on exit.
+
 iface=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'dev \K\S+' | head -n1)
 [ -z "$iface" ] && iface=$(ip route 2>/dev/null | grep -oP 'default .*dev \K\S+' | head -n1)
 [ -z "$iface" ] && exit 1
@@ -9,6 +21,23 @@ iface=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'dev \K\S+' | head -n1)
 ip4=$(ip -o -4 addr show dev "$iface" 2>/dev/null | grep -oP 'inet \K[0-9.]+' | head -n1)
 sous=""
 [ -n "$ip4" ] && sous="$(echo "$ip4" | cut -d. -f1-3).0/24"
+
+DNSPORT=5300
+DNSCONF="$(mktemp /tmp/vigie-dnsmasq.XXXXXX.conf)"
+BETTER=""
+DNSMASQ=""
+
+# Stop the children and revert the DNS redirection. Runs on any exit, so a leaked
+# DNAT rule never leaves the network pointing at a dead resolver.
+nettoyer() {
+  [ -n "$DNSMASQ" ] && kill "$DNSMASQ" 2>/dev/null
+  [ -n "$BETTER" ]  && kill "$BETTER"  2>/dev/null
+  iptables -t nat -D PREROUTING -i "$iface" -j VIGIE_DNS 2>/dev/null
+  iptables -t nat -F VIGIE_DNS 2>/dev/null
+  iptables -t nat -X VIGIE_DNS 2>/dev/null
+  rm -f "$DNSCONF" 2>/dev/null
+}
+trap nettoyer EXIT INT TERM
 
 # bettercap: ARP spoof of the whole subnet (explicit target = the /24, to spoof
 # even a device that was asleep during the scan), without sniff.
@@ -20,11 +49,39 @@ else
     -eval "set arp.spoof.fullduplex true; net.probe on; arp.spoof on" >/dev/null 2>&1 &
 fi
 BETTER=$!
-trap 'kill "$BETTER" 2>/dev/null' EXIT INT TERM
 sleep 1
 
+# dnsmasq: local resolver on a high port, logs every query per client and
+# forwards upstream so devices keep resolving. Needs the Pi's IP; skipped if
+# unknown (tshark still captures what it can).
+if [ -n "$ip4" ]; then
+  cat > "$DNSCONF" <<EOF
+port=$DNSPORT
+listen-address=127.0.0.1,$ip4
+bind-interfaces
+no-resolv
+server=1.1.1.1
+server=9.9.9.9
+no-hosts
+log-queries
+log-facility=-
+EOF
+  dnsmasq -k -C "$DNSCONF" 2>&1 &
+  DNSMASQ=$!
+
+  # Redirect every port-53 query transiting the Pi to the local resolver.
+  # Own dedicated chain so cleanup is a single, reliable operation; the startup
+  # flush also clears anything a previous hard kill may have left behind.
+  iptables -t nat -N VIGIE_DNS 2>/dev/null
+  iptables -t nat -F VIGIE_DNS
+  iptables -t nat -A VIGIE_DNS ! -d "$ip4" -p udp --dport 53 -j DNAT --to-destination "$ip4:$DNSPORT"
+  iptables -t nat -A VIGIE_DNS ! -d "$ip4" -p tcp --dport 53 -j DNAT --to-destination "$ip4:$DNSPORT"
+  iptables -t nat -C PREROUTING -i "$iface" -j VIGIE_DNS 2>/dev/null \
+    || iptables -t nat -I PREROUTING -i "$iface" -j VIGIE_DNS
+fi
+
 # tshark: TLS ClientHello (SNI), QUIC connections (UDP/443 -> destination), and
-# cleartext DNS queries. One line per event:
+# cleartext DNS queries. Foreground = keeps the script alive. One line per event:
 #   ip.src <TAB> ip.dst <TAB> sni <TAB> dns
 tshark -i "$iface" -l -n -Q \
   -Y 'tls.handshake.type == 1 || udp.port == 443 || (dns.flags.response == 0 && dns.qry.name)' \
