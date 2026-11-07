@@ -771,6 +771,7 @@ def vigie_trafic(ip):
     items = sorted(dom_ts.items(), key=lambda kv: kv[1], reverse=True)
     return jsonify({
         "actif": vigie_monitor.etat_monitor["actif"],
+        "vpn": vigie_monitor.vpn_info([c for c in (ip, hote) if c]),
         "domaines": [{"d": dom, "t": ts} for dom, ts in items],
     })
 

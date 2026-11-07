@@ -32,6 +32,9 @@
     .port .svc { font-size:13px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .port .tps { font-size:11px; color:#8b949e; flex:0 0 auto; }
     .vide { color:#8b949e; font-size:12px; padding:8px 2px; line-height:1.6; }
+    .vpn { background:#2a2000; border:1px solid #e3b341; color:#e3b341; border-radius:8px;
+           padding:8px 10px; font-size:11px; line-height:1.45; margin-bottom:10px; }
+    .vpn b { color:#f0c660; }
 
     .scanning { display:flex; flex-direction:column; align-items:center; gap:12px; padding:14px 0; }
     .radar { width:72px; height:72px; border-radius:50%; position:relative;
@@ -85,6 +88,7 @@
     </div>
 
     <div class="sect" style="margin-top:14px">Traffic — contacted domains</div>
+    <div class="vpn" id="vpn" style="display:none"></div>
     <div id="traffic">
       <div class="vide">Loading…</div>
     </div>
@@ -147,6 +151,15 @@
     function pollTraffic(){
       fetch('/vigie/trafic/' + IP).then(function(r){ return r.json(); }).then(function(j){
         var box = document.getElementById('traffic');
+        var vb = document.getElementById('vpn');
+        if(j.vpn){
+          vb.style.display = '';
+          vb.innerHTML = 'VPN detected — <b>' + j.vpn.type + '</b> tunnel to ' +
+            (j.vpn.endpoint || j.vpn.ip) +
+            '. All traffic is encrypted inside the tunnel, so its domains cannot be seen from the network.';
+        } else {
+          vb.style.display = 'none';
+        }
         var doms = j.domaines || [];
         if(!doms.length){
           box.innerHTML = j.actif

@@ -84,13 +84,15 @@ EOF
     || iptables -t nat -I PREROUTING -i "$iface" -j VIGIE_DNS
 fi
 
-# tshark: TLS ClientHello (SNI), QUIC connections (UDP/443 -> destination), and
-# cleartext DNS queries. Foreground = keeps the script alive. One line per event:
-#   ip.src <TAB> ip.dst <TAB> sni <TAB> dns
+# tshark: TLS ClientHello (SNI), QUIC connections (UDP/443 -> destination),
+# cleartext DNS queries, and WireGuard handshakes (VPN detection: only the rare
+# handshake packets, not the data flood). Foreground = keeps the script alive.
+# One line per event:  ip.src <TAB> ip.dst <TAB> sni <TAB> dns <TAB> wg.type
 tshark -i "$iface" -l -n -Q \
-  -Y 'tls.handshake.type == 1 || udp.port == 443 || (dns.flags.response == 0 && dns.qry.name)' \
+  -Y 'tls.handshake.type == 1 || udp.port == 443 || (dns.flags.response == 0 && dns.qry.name) || wg.type == 1' \
   -T fields \
   -e ip.src \
   -e ip.dst \
   -e tls.handshake.extensions_server_name \
-  -e dns.qry.name
+  -e dns.qry.name \
+  -e wg.type

@@ -39,6 +39,7 @@ _RE_DNSMASQ = re.compile(
 _RE_PRIVE = re.compile(r"^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|224\.|0\.)")
 _cache_rdns = {}
 _vu_dst = {}   # (src, dst) -> last ts, to avoid reprocessing the QUIC flow
+_vpn = {}      # device ip -> {"type", "endpoint", "ip", "ts"} (tunnel detected)
 
 
 def _est_prive(ip):
@@ -67,6 +68,12 @@ def _noter(ip, domaine):
             d.popitem(last=False)
 
 
+def _noter_vpn(ip, type_, dst):
+    with _verrou:
+        _vpn[ip] = {"type": type_, "endpoint": _rdns(dst), "ip": dst,
+                    "ts": time.time()}
+
+
 def _traiter(ligne):
     # dnsmasq query log: "query[TYPE] <domain> from <device-ip>"
     m = _RE_DNSMASQ.search(ligne)
@@ -77,16 +84,22 @@ def _traiter(ligne):
                 and not _IGNORER_DOM.search(dom)):
             _noter(src, dom)
         return
-    # tshark fields: ip.src <TAB> ip.dst <TAB> sni <TAB> dns
+    # tshark fields: ip.src <TAB> ip.dst <TAB> sni <TAB> dns <TAB> wg.type
     champs = ligne.rstrip("\n").split("\t")
-    while len(champs) < 4:
+    while len(champs) < 5:
         champs.append("")
     src = champs[0].strip()
     dst = champs[1].strip()
     sni = champs[2].strip().split(",")[0].strip()
     dns = champs[3].strip().split(",")[0].strip()
+    wg = champs[4].strip()
     # The source must be a local device (filters out server->client reply packets)
     if not _RE_IP.match(src) or not _est_prive(src):
+        return
+    # WireGuard handshake: the device is tunneling to dst (a VPN). Record it and
+    # stop — do not log the endpoint as a contacted domain.
+    if wg and _RE_IP.match(dst) and not _est_prive(dst):
+        _noter_vpn(src, "WireGuard", dst)
         return
     dom = (sni or dns).lower().rstrip(".")
     if dom:
@@ -140,6 +153,7 @@ def demarrer(prefixe=None):
         etat_monitor["actif"] = True
         etat_monitor["depuis"] = time.time()
         etat_monitor["hotes"] = {}
+        _vpn.clear()
         etat_monitor["brut"].clear()
     _thread = threading.Thread(target=_lire, args=(_proc,), daemon=True)
     _thread.start()
@@ -185,6 +199,16 @@ def forcer_dns(actif):
     except Exception:
         pass
     return _force_dns
+
+
+def vpn_info(cles):
+    """VPN tunnel detected for one of these keys (device IP), else None."""
+    with _verrou:
+        for cle in cles:
+            v = _vpn.get(cle)
+            if v:
+                return {"type": v["type"], "endpoint": v["endpoint"], "ip": v["ip"]}
+    return None
 
 
 def horodates(cles):
