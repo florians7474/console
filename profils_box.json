@@ -1,19 +1,27 @@
 {
-  "_schema": "prefixe_essid -> {vendeur, modele, algo, remarque}. algo=routerkeygen : la derivation est deleguee a routerkeygen-cli. algo=faible : defaut court connu, passe rapide.",
+  "_schema": "essid_prefix -> {vendor, model, algo, note, format}. algo=routerkeygen: derivation delegated to routerkeygen-cli (MAC/serial based). algo=mask: fixed-charset random default, use format.mask (local only if the keyspace is small, otherwise GPU export). algo=combinator: word-list combination (e.g. adjective+noun+digits). algo=ignore: out of scope. format=null means the key is MAC/serial derived (handled by routerkeygen, no mask).",
   "profils": [
-    { "prefixe": "Livebox-",   "vendeur": "Orange",    "modele": "Livebox",        "algo": "routerkeygen", "remarque": "cle usine = fonction du BSSID sur anciens firmwares" },
-    { "prefixe": "LiveboxFibre","vendeur": "Orange",    "modele": "Livebox Fibre",  "algo": "routerkeygen", "remarque": "idem Livebox" },
-    { "prefixe": "Orange-",    "vendeur": "Orange",     "modele": "Livebox",        "algo": "routerkeygen", "remarque": "ancien prefixe Orange" },
-    { "prefixe": "SFR-",       "vendeur": "SFR",        "modele": "NB4/NB6/Box",     "algo": "routerkeygen", "remarque": "derivation WPA selon generation du firmware" },
-    { "prefixe": "NEUF_",      "vendeur": "SFR",        "modele": "Neuf Box",        "algo": "routerkeygen", "remarque": "ancien parc Neuf/SFR" },
-    { "prefixe": "Bbox-",      "vendeur": "Bouygues",   "modele": "Bbox",            "algo": "routerkeygen", "remarque": "cle usine liee au BSSID" },
-    { "prefixe": "bbox-",      "vendeur": "Bouygues",   "modele": "Bbox",            "algo": "routerkeygen", "remarque": "variante casse" },
-    { "prefixe": "Freebox-",   "vendeur": "Free",       "modele": "Freebox",         "algo": "routerkeygen", "remarque": "cle usine longue aleatoire sur recents : attendre peu" },
-    { "prefixe": "FreeWifi",   "vendeur": "Free",       "modele": "hotspot",         "algo": "ignore",       "remarque": "reseau communautaire, hors cible" },
-    { "prefixe": "TP-LINK_",   "vendeur": "TP-Link",    "modele": "routeur grand public", "algo": "routerkeygen", "remarque": "certains modeles a defaut derivable" },
-    { "prefixe": "Thomson",    "vendeur": "Thomson",    "modele": "Thomson/SpeedTouch", "algo": "routerkeygen", "remarque": "ThomsonKeygen historique" },
-    { "prefixe": "SpeedTouch", "vendeur": "Thomson",    "modele": "SpeedTouch",      "algo": "routerkeygen", "remarque": "idem Thomson" },
-    { "prefixe": "dlink-",     "vendeur": "D-Link",     "modele": "routeur grand public", "algo": "routerkeygen", "remarque": "selon modele" },
-    { "prefixe": "NETGEAR",    "vendeur": "Netgear",    "modele": "routeur grand public", "algo": "routerkeygen", "remarque": "selon modele" }
+    { "prefix": "Livebox-",    "vendor": "Orange",      "model": "Livebox",             "algo": "routerkeygen", "note": "factory key derived from BSSID on older firmware", "format": null },
+    { "prefix": "LiveboxFibre","vendor": "Orange",      "model": "Livebox Fibre",       "algo": "routerkeygen", "note": "same as Livebox", "format": null },
+    { "prefix": "Orange-",     "vendor": "Orange",      "model": "Livebox",             "algo": "routerkeygen", "note": "older Orange prefix", "format": null },
+    { "prefix": "SFR-",        "vendor": "SFR",         "model": "NB4/NB6/Box",         "algo": "routerkeygen", "note": "WPA derivation varies by firmware generation", "format": null },
+    { "prefix": "NEUF_",       "vendor": "SFR",         "model": "Neuf Box",            "algo": "routerkeygen", "note": "legacy Neuf/SFR estate", "format": null },
+    { "prefix": "Bbox-",       "vendor": "Bouygues",    "model": "Bbox",                "algo": "routerkeygen", "note": "factory key tied to BSSID", "format": null },
+    { "prefix": "bbox-",       "vendor": "Bouygues",    "model": "Bbox",                "algo": "routerkeygen", "note": "case variant", "format": null },
+    { "prefix": "Freebox-",    "vendor": "Free",        "model": "Freebox",             "algo": "routerkeygen", "note": "long random factory key on recent models: expect little", "format": null },
+    { "prefix": "FreeWifi",    "vendor": "Free",        "model": "hotspot",             "algo": "ignore",       "note": "community network, out of scope", "format": null },
+    { "prefix": "TP-LINK_",    "vendor": "TP-Link",     "model": "consumer router",     "algo": "routerkeygen", "note": "some models have a derivable default", "format": null },
+    { "prefix": "Thomson",     "vendor": "Thomson",     "model": "Thomson/SpeedTouch",  "algo": "routerkeygen", "note": "historical ThomsonKeygen", "format": null },
+    { "prefix": "SpeedTouch",  "vendor": "Thomson",     "model": "SpeedTouch",          "algo": "routerkeygen", "note": "same as Thomson", "format": null },
+    { "prefix": "dlink-",      "vendor": "D-Link",      "model": "consumer router",     "algo": "routerkeygen", "note": "model dependent", "format": null },
+    { "prefix": "NETGEAR",     "vendor": "Netgear",     "model": "consumer router",     "algo": "combinator",   "note": "default = adjective + noun + 3 digits", "format": { "type": "combinator", "pattern": "adjective + noun + 3 digits" } },
+
+    { "prefix": "SKY",         "vendor": "Sky",         "model": "UK broadband (SR101+)","algo": "mask",         "note": "random, uppercase A-Z only, 26^8", "format": { "length": 8, "charset": "upper", "mask": "?u?u?u?u?u?u?u?u" } },
+    { "prefix": "VM",          "vendor": "Virgin Media","model": "UK SuperHub 2",       "algo": "mask",         "note": "single-case letters only", "format": { "length": 8, "charset": "lower", "mask": "?l?l?l?l?l?l?l?l" } },
+    { "prefix": "BTHub",       "vendor": "BT",          "model": "UK Home Hub",         "algo": "mask",         "note": "10 chars, 0-9 and a-f", "format": { "length": 10, "charset": "hex-lower", "mask": "-1 ?dabcdef ?1?1?1?1?1?1?1?1?1?1" } },
+    { "prefix": "TALKTALK",    "vendor": "TalkTalk",    "model": "UK",                  "algo": "mask",         "note": "8 chars, 5 uppercase letters + 3 digits, positions vary", "format": { "length": 8, "charset": "upper+digit", "mask": "mixed positions (5 upper + 3 digits)" } },
+    { "prefix": "ATT",         "vendor": "AT&T",        "model": "US U-verse / 2Wire",  "algo": "mask",         "note": "newer: 10 chars, 8 uppercase + 2 digits; older 2Wire: 12 chars a-z0-9", "format": { "length": 10, "charset": "upper+digit", "mask": "?u?u?u?u?u?u?u?u?d?d" } },
+    { "prefix": "MySpectrumWiFi","vendor": "Spectrum", "model": "US",                  "algo": "combinator",   "note": "default = adjective + noun + 3 digits", "format": { "type": "combinator", "pattern": "adjective + noun + 3 digits" } },
+    { "prefix": "UPC",         "vendor": "UPC",         "model": "EU Compal/Ubee",      "algo": "routerkeygen", "note": "reversible default algorithm; 12 mixed chars as fallback", "format": { "length": 12, "charset": "mixed", "mask": "-1 ?l?u?d ?1?1?1?1?1?1?1?1?1?1?1?1" } }
   ]
 }

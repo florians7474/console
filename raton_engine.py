@@ -115,7 +115,7 @@ def profil_pour_essid(essid):
     if not essid:
         return None
     for p in _charger_profils():
-        if essid.startswith(p.get("prefixe", "\0")):
+        if essid.startswith(p.get("prefix", "\0")):
             return p
     return None
 
